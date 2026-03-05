@@ -48,7 +48,7 @@ function MobileHeader() {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary">
           <TrendingUp className="h-3.5 w-3.5 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold text-sidebar-foreground">FinanceOS</span>
+        <span className="text-sm font-semibold text-sidebar-foreground">Financelli</span>
       </div>
       {/* User + theme actions */}
       <div className="flex items-center gap-1">
