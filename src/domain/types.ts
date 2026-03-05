@@ -41,8 +41,9 @@ export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly'
 export interface RecurringRule {
   id?: number
   accountId: number
+  toAccountId?: number  // destination account — only for transfer rules
   name: string
-  amount: number        // positive = income, negative = expense (cents)
+  amount: number        // positive = income, negative = expense/transfer (cents)
   type: TransactionType
   category: string
   description: string

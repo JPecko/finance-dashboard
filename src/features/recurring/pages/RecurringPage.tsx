@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, RefreshCw, Play, Pause } from 'lucide-react'
+import { Plus, Pencil, Trash2, RefreshCw, Play, Pause, ArrowRight } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import { Card, CardContent } from '@/shared/components/ui/card'
@@ -7,6 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
 import { useRecurringRules, removeRule, updateRule } from '@/shared/hooks/useRecurringRules'
+import { useAccounts } from '@/shared/hooks/useAccounts'
 import { formatMoney } from '@/domain/money'
 import { getCategoryById } from '@/domain/categories'
 import { formatDate } from '@/shared/utils/format'
@@ -15,9 +16,12 @@ import RecurringFormModal from '../components/RecurringFormModal'
 import type { RecurringRule } from '@/domain/types'
 
 export default function RecurringPage() {
-  const rules = useRecurringRules()
+  const rules    = useRecurringRules()
+  const accounts = useAccounts()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing]     = useState<RecurringRule | undefined>()
+
+  const accountName = (id: number) => accounts.find(a => a.id === id)?.name ?? '?'
 
   const handleEdit = (rule: RecurringRule) => {
     setEditing(rule)
@@ -98,6 +102,13 @@ export default function RecurringPage() {
                             <Badge variant="secondary" className="text-xs">Paused</Badge>
                           )}
                         </div>
+                        {rule.type === 'transfer' && rule.toAccountId != null ? (
+                          <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                            <span>{accountName(rule.accountId)}</span>
+                            <ArrowRight className="h-3 w-3 shrink-0" />
+                            <span>{accountName(rule.toAccountId)}</span>
+                          </div>
+                        ) : null}
                         <div className="flex items-center gap-2 mt-0.5">
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full font-medium ${FREQ_COLORS[rule.frequency]}`}
@@ -117,10 +128,14 @@ export default function RecurringPage() {
                     <div className="flex items-center gap-3">
                       <span
                         className={`text-base font-semibold ${
+                          rule.type === 'transfer' ? 'text-blue-600 dark:text-blue-400' :
                           rule.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'
                         }`}
                       >
-                        {rule.amount >= 0 ? '+' : ''}{formatMoney(rule.amount)}
+                        {rule.type === 'transfer'
+                          ? formatMoney(Math.abs(rule.amount))
+                          : `${rule.amount >= 0 ? '+' : ''}${formatMoney(rule.amount)}`
+                        }
                       </span>
 
                       <DropdownMenu>

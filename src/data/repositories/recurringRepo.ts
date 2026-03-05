@@ -5,6 +5,7 @@ import { addWeeks, addMonths, addYears, formatISO, parseISO } from 'date-fns'
 type RuleRow = {
   id: number
   account_id: number
+  to_account_id: number | null
   name: string
   amount: number
   type: string
@@ -20,9 +21,10 @@ type RuleRow = {
 
 function toRule(row: RuleRow): RecurringRule {
   return {
-    id:          row.id,
-    accountId:   row.account_id,
-    name:        row.name,
+    id:           row.id,
+    accountId:    row.account_id,
+    toAccountId:  row.to_account_id ?? undefined,
+    name:         row.name,
     amount:      row.amount,
     type:        row.type as RecurringRule['type'],
     category:    row.category,
@@ -38,7 +40,8 @@ function toRule(row: RuleRow): RecurringRule {
 
 function toRow(rule: Partial<RecurringRule>): Record<string, unknown> {
   const row: Record<string, unknown> = {}
-  if (rule.accountId   !== undefined) row.account_id  = rule.accountId
+  if (rule.accountId   !== undefined) row.account_id    = rule.accountId
+  if (rule.toAccountId !== undefined) row.to_account_id = rule.toAccountId ?? null
   if (rule.name        !== undefined) row.name        = rule.name
   if (rule.amount      !== undefined) row.amount      = rule.amount
   if (rule.type        !== undefined) row.type        = rule.type
