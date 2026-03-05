@@ -16,8 +16,8 @@ export default defineConfig({
 
       // Web App Manifest
       manifest: {
-        name: 'FinanceOS',
-        short_name: 'FinanceOS',
+        name: 'Financelli',
+        short_name: 'Financelli',
         description: 'Personal finance dashboard',
         theme_color: '#1DB954',
         background_color: '#121212',

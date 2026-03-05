@@ -52,7 +52,7 @@ export default function LoginPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
             <TrendingUp className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">FinanceOS</h1>
+          <h1 className="text-2xl font-bold">Financelli</h1>
           <p className="text-sm text-muted-foreground">Personal finance dashboard</p>
         </div>
 
