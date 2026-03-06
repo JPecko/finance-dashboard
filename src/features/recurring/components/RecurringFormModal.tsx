@@ -40,7 +40,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
   const isEdit   = !!rule
   const { data: accounts = [] } = useSortedAccounts()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       accountId:    '',
       toAccountId:  '',
@@ -262,9 +262,10 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>Cancel</Button>
             <Button
               type="submit"
+              loading={isSubmitting}
               disabled={
                 accounts.length === 0 ||
                 (isTransfer && (!selectedAccount || !selectedTo || selectedAccount === selectedTo))

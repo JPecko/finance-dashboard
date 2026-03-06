@@ -51,7 +51,7 @@ interface Props {
 export default function AccountFormModal({ open, onClose, account }: Props) {
   const isEdit = !!account
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       name: '',
       type: 'checking',
@@ -213,8 +213,8 @@ export default function AccountFormModal({ open, onClose, account }: Props) {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit">{isEdit ? 'Save Changes' : 'Add Account'}</Button>
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={isSubmitting}>{isEdit ? 'Save Changes' : 'Add Account'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
