@@ -31,7 +31,7 @@ export default function TransactionFormModal({ open, onClose, transaction, defau
     onSubmit,
   } = useTransactionForm({ open, onClose, transaction, defaultType })
 
-  const { register, setValue, formState: { errors } } = form
+  const { register, setValue, formState: { errors, isSubmitting } } = form
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -53,7 +53,7 @@ export default function TransactionFormModal({ open, onClose, transaction, defau
             accountOptions={accountOptions}
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="tx-amount">Amount</Label>
               <Input
@@ -84,8 +84,8 @@ export default function TransactionFormModal({ open, onClose, transaction, defau
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={accounts.length === 0 || !isValid}>
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={isSubmitting} disabled={accounts.length === 0 || !isValid}>
               {isEdit ? 'Save Changes' : 'Add Transaction'}
             </Button>
           </DialogFooter>

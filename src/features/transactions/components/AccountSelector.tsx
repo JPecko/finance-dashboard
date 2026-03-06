@@ -61,7 +61,7 @@ export default function AccountSelector({
 
   return (
     <div className="space-y-1">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-end gap-2">
         <AccountSelect
           label="From"
           value={fromId}
@@ -69,7 +69,7 @@ export default function AccountSelector({
           accounts={accountOptions(toId)}
           withExternal
         />
-        <div className="flex h-9 items-center justify-center">
+        <div className="hidden sm:flex h-9 items-center justify-center">
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
         <AccountSelect
