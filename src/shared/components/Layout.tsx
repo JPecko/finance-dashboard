@@ -8,6 +8,7 @@ import { useThemeStore } from '@/shared/store/themeStore'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/data/supabase'
 import { navItems } from '@/shared/config/nav'
+import { APP_VERSION } from '@/version'
 
 const MOBILE_NAV_ORDER = ['/dashboard', '/transactions', '/accounts', '/recurring', '/settings']
 const mobileNavItems = MOBILE_NAV_ORDER.map(to => navItems.find(n => n.to === to)!)
@@ -49,6 +50,7 @@ function MobileHeader() {
           <TrendingUp className="h-3.5 w-3.5 text-primary-foreground" />
         </div>
         <span className="text-sm font-semibold text-sidebar-foreground">Financelli</span>
+        <span className="text-[10px] text-muted-foreground/60">{APP_VERSION}</span>
       </div>
       {/* User + theme actions */}
       <div className="flex items-center gap-1">
