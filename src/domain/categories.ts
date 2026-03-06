@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   BarChart2,
   Coins,
+  BadgePercent,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,6 +37,7 @@ export const CATEGORIES: Category[] = [
   { id: 'education',     label: 'Education',        icon: GraduationCap,  color: '#06b6d4', type: 'expense' },
   { id: 'travel',        label: 'Travel',           icon: Plane,          color: '#14b8a6', type: 'expense' },
   { id: 'roundup',       label: 'Roundup',          icon: Coins,          color: '#78716c', type: 'expense' },
+  { id: 'cashback',      label: 'Cashback',         icon: BadgePercent,   color: '#10b981', type: 'expense' },
   { id: 'salary',        label: 'Salary',           icon: Briefcase,      color: '#22c55e', type: 'income' },
   { id: 'freelance',     label: 'Freelance',        icon: Briefcase,      color: '#8b5cf6', type: 'income' },
   { id: 'investment',    label: 'Investment Return', icon: TrendingUp,    color: '#84cc16', type: 'income' },

@@ -11,20 +11,24 @@ type AccountRow = {
   color: string
   created_at: string
   participants: number
+  cashback_pct: number | null
+  roundup_multiplier: number | null
 }
 
 function toAccount(row: AccountRow): Account {
   return {
-    id:           row.id,
-    ownerId:      row.user_id,
-    name:         row.name,
-    type:         row.type as Account['type'],
-    balance:      row.balance,
-    currency:     row.currency,
-    color:        row.color,
-    createdAt:    row.created_at,
-    participants: row.participants ?? 1,
-    sharedWith:   [],
+    id:                row.id,
+    ownerId:           row.user_id,
+    name:              row.name,
+    type:              row.type as Account['type'],
+    balance:           row.balance,
+    currency:          row.currency,
+    color:             row.color,
+    createdAt:         row.created_at,
+    participants:      row.participants ?? 1,
+    sharedWith:        [],
+    cashbackPct:       row.cashback_pct ?? undefined,
+    roundupMultiplier: row.roundup_multiplier ?? undefined,
   }
 }
 
@@ -99,11 +103,13 @@ export const accountsRepo = {
     const { data, error } = await supabase
       .from('accounts')
       .insert({
-        name:     account.name,
-        type:     account.type,
-        balance:  account.balance,
-        currency: account.currency,
-        color:    account.color,
+        name:               account.name,
+        type:               account.type,
+        balance:            account.balance,
+        currency:           account.currency,
+        color:              account.color,
+        cashback_pct:       account.cashbackPct ?? null,
+        roundup_multiplier: account.roundupMultiplier ?? null,
       })
       .select()
       .single()
@@ -113,11 +119,13 @@ export const accountsRepo = {
 
   update: async (id: number, changes: Partial<Account>): Promise<void> => {
     const row: Record<string, unknown> = {}
-    if (changes.name     !== undefined) row.name     = changes.name
-    if (changes.type     !== undefined) row.type     = changes.type
-    if (changes.balance  !== undefined) row.balance  = changes.balance
-    if (changes.currency !== undefined) row.currency = changes.currency
-    if (changes.color    !== undefined) row.color    = changes.color
+    if (changes.name              !== undefined) row.name               = changes.name
+    if (changes.type              !== undefined) row.type               = changes.type
+    if (changes.balance           !== undefined) row.balance            = changes.balance
+    if (changes.currency          !== undefined) row.currency           = changes.currency
+    if (changes.color             !== undefined) row.color              = changes.color
+    if (changes.cashbackPct       !== undefined) row.cashback_pct       = changes.cashbackPct ?? null
+    if (changes.roundupMultiplier !== undefined) row.roundup_multiplier = changes.roundupMultiplier ?? null
     const { error } = await supabase.from('accounts').update(row).eq('id', id)
     if (error) throw error
   },

@@ -50,6 +50,54 @@ async function applyBalances(tx: Omit<Transaction, 'id' | 'createdAt'>) {
   }
 }
 
+/** Auto-creates cashback and/or roundup transactions for an expense, if the account has them enabled. */
+async function createAutoTransactions(
+  tx: Omit<Transaction, 'id' | 'createdAt'>,
+  account: Awaited<ReturnType<typeof accountsRepo.getById>>,
+): Promise<void> {
+  if (!account) return
+
+  const expAbs = Math.abs(tx.amount) // positive cents
+
+  // ── Cashback ────────────────────────────────────────────────────────────────
+  if (account.cashbackPct) {
+    const cashbackCents = Math.floor(expAbs * account.cashbackPct / 100)
+    if (cashbackCents > 0) {
+      await supabase.from('transactions').insert({
+        account_id:        tx.accountId,
+        to_account_id:     null,
+        amount:            -cashbackCents,
+        type:              'expense',
+        category:          'cashback',
+        description:       `${tx.description} - Cashback ${account.cashbackPct}%`,
+        date:              tx.date,
+        recurring_rule_id: null,
+      })
+      await accountsRepo.adjustBalance(tx.accountId, -cashbackCents)
+    }
+  }
+
+  // ── Roundup ─────────────────────────────────────────────────────────────────
+  if (account.roundupMultiplier) {
+    const remainder = expAbs % 100                    // cents past the last whole euro
+    const baseCents = remainder === 0 ? 100 : 100 - remainder  // gap to next euro (whole = 1€)
+    if (baseCents > 0) {
+      const roundupCents = baseCents * account.roundupMultiplier
+      await supabase.from('transactions').insert({
+        account_id:        tx.accountId,
+        to_account_id:     null,
+        amount:            -roundupCents,
+        type:              'expense',
+        category:          'roundup',
+        description:       `${tx.description} - Roundup ×${account.roundupMultiplier}`,
+        date:              tx.date,
+        recurring_rule_id: null,
+      })
+      await accountsRepo.adjustBalance(tx.accountId, -roundupCents)
+    }
+  }
+}
+
 async function reverseBalances(tx: Transaction) {
   await accountsRepo.adjustBalance(tx.accountId, -tx.amount)
   if (tx.toAccountId != null) {
@@ -78,6 +126,7 @@ export const transactionsRepo = {
       .gte('date', from)
       .lt('date', to)
       .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
     if (error) throw error
     return (data as TransactionRow[]).map(toTransaction)
   },
@@ -100,6 +149,14 @@ export const transactionsRepo = {
       .single()
     if (error) throw error
     await applyBalances(tx)
+
+    // Auto-generate cashback/roundup for expenses (excluding auto-transactions themselves)
+    if (tx.type === 'expense' && tx.amount < 0 &&
+        tx.category !== 'cashback' && tx.category !== 'roundup') {
+      const account = await accountsRepo.getById(tx.accountId)
+      await createAutoTransactions(tx, account)
+    }
+
     return (data as { id: number }).id
   },
 
