@@ -77,56 +77,130 @@ export function useMonthSummary(year: number, month: number) {
   }
 }
 
-/** Returns monthly cashback + roundup totals (as positive amounts) for the last 6 months ending at (year, month). */
+/**
+ * Returns monthly cashback (computed from expense transactions × account cashbackPct)
+ * + roundup (from roundup transactions) for the last 6 months ending at (year, month).
+ *
+ * Cache: invalidated on every transaction mutation via ['benefits'] prefix.
+ */
 export function useMonthlyBenefits(year: number, month: number) {
-  return useQuery({
-    queryKey: ['benefits', 'monthly', year, month],
-    queryFn: async () => {
-      const result: { month: string; cashback: number; roundup: number }[] = []
-      for (let i = 5; i >= 0; i--) {
-        const d      = new Date(year, month - 1 - i, 1)
-        const y      = getYear(d)
-        const m      = getMonth(d) + 1
-        const from   = `${y}-${String(m).padStart(2, '0')}-01`
-        const nm     = m === 12 ? 1 : m + 1
-        const ny     = m === 12 ? y + 1 : y
-        const to     = `${ny}-${String(nm).padStart(2, '0')}-01`
-        const { data } = await supabase
-          .from('transactions')
-          .select('amount, category')
-          .in('category', ['cashback', 'roundup'])
-          .gte('date', from)
-          .lt('date', to)
-        const rows = (data ?? []) as { amount: number; category: string }[]
-        result.push({
-          month:    format(d, 'MMM yy'),
-          cashback: rows.filter(r => r.category === 'cashback').reduce((s, r) => s + Math.abs(r.amount), 0),
-          roundup:  rows.filter(r => r.category === 'roundup').reduce((s, r) => s + Math.abs(r.amount), 0),
-        })
-      }
-      return result
-    },
-  })
-}
+  const { data: accounts = [] } = useAccounts()
 
-/** Returns YTD cashback + roundup totals (as positive amounts) for the given year. */
-export function useYearBenefits(year: number) {
-  return useQuery({
-    queryKey: ['benefits', 'year', year],
+  // 6-month window bounds
+  const startD = new Date(year, month - 6, 1)
+  const windowStart = `${getYear(startD)}-${String(getMonth(startD) + 1).padStart(2, '0')}-01`
+  const nm = month === 12 ? 1 : month + 1
+  const ny = month === 12 ? year + 1 : year
+  const windowEnd = `${ny}-${String(nm).padStart(2, '0')}-01`
+
+  // Expense transactions in window — for cashback computation (exclude roundup/cashback categories)
+  const { data: expenseRows = [] } = useQuery({
+    queryKey: ['benefits', 'expense-raw', year, month],
     queryFn: async () => {
       const { data } = await supabase
         .from('transactions')
-        .select('amount, category')
-        .in('category', ['cashback', 'roundup'])
-        .gte('date', `${year}-01-01`)
-        .lt('date', `${year + 1}-01-01`)
-      const rows = (data ?? []) as { amount: number; category: string }[]
-      return {
-        cashback: rows.filter(r => r.category === 'cashback').reduce((s, r) => s + Math.abs(r.amount), 0),
-        roundup:  rows.filter(r => r.category === 'roundup').reduce((s, r) => s + Math.abs(r.amount), 0),
-      }
+        .select('account_id, amount, date')
+        .eq('type', 'expense')
+        .neq('category', 'roundup')
+        .neq('category', 'cashback')
+        .lt('amount', 0)
+        .gte('date', windowStart)
+        .lt('date', windowEnd)
+      return (data ?? []) as { account_id: number; amount: number; date: string }[]
     },
   })
+
+  // Roundup transactions in window
+  const { data: roundupRows = [] } = useQuery({
+    queryKey: ['benefits', 'roundup-raw', year, month],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('amount, date')
+        .eq('category', 'roundup')
+        .gte('date', windowStart)
+        .lt('date', windowEnd)
+      return (data ?? []) as { amount: number; date: string }[]
+    },
+  })
+
+  const data = useMemo(() => {
+    const result: { month: string; cashback: number; roundup: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d    = new Date(year, month - 1 - i, 1)
+      const y    = getYear(d)
+      const m    = getMonth(d) + 1
+      const from = `${y}-${String(m).padStart(2, '0')}-01`
+      const enm  = m === 12 ? 1 : m + 1
+      const eny  = m === 12 ? y + 1 : y
+      const to   = `${eny}-${String(enm).padStart(2, '0')}-01`
+
+      const roundup = roundupRows
+        .filter(r => r.date >= from && r.date < to)
+        .reduce((s, r) => s + Math.abs(r.amount), 0)
+
+      const cashback = expenseRows
+        .filter(e => e.date >= from && e.date < to)
+        .reduce((s, e) => {
+          const acc = accounts.find(a => a.id === e.account_id)
+          if (!acc?.cashbackPct) return s
+          return s + Math.floor(Math.abs(e.amount) * acc.cashbackPct / 100)
+        }, 0)
+
+      result.push({ month: format(d, 'MMM yy'), cashback, roundup })
+    }
+    return result
+  }, [year, month, expenseRows, roundupRows, accounts])
+
+  return { data }
+}
+
+/**
+ * Returns YTD cashback (computed) + roundup (from transactions) for the given year.
+ * Cache: invalidated on every transaction mutation via ['benefits'] prefix.
+ */
+export function useYearBenefits(year: number) {
+  const { data: accounts = [] } = useAccounts()
+
+  const { data: expenseRows = [] } = useQuery({
+    queryKey: ['benefits', 'year-expense', year],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('account_id, amount')
+        .eq('type', 'expense')
+        .neq('category', 'roundup')
+        .neq('category', 'cashback')
+        .lt('amount', 0)
+        .gte('date', `${year}-01-01`)
+        .lt('date', `${year + 1}-01-01`)
+      return (data ?? []) as { account_id: number; amount: number }[]
+    },
+  })
+
+  const { data: roundupRows = [] } = useQuery({
+    queryKey: ['benefits', 'year-roundup', year],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('category', 'roundup')
+        .gte('date', `${year}-01-01`)
+        .lt('date', `${year + 1}-01-01`)
+      return (data ?? []) as { amount: number }[]
+    },
+  })
+
+  const data = useMemo(() => ({
+    cashback: expenseRows.reduce((s, e) => {
+      const acc = accounts.find(a => a.id === e.account_id)
+      if (!acc?.cashbackPct) return s
+      return s + Math.floor(Math.abs(e.amount) * acc.cashbackPct / 100)
+    }, 0),
+    roundup: roundupRows.reduce((s, r) => s + Math.abs(r.amount), 0),
+  }), [expenseRows, roundupRows, accounts])
+
+  return { data }
 }
 
 // ─── Running balance ─────────────────────────────────────────────────────────
@@ -194,16 +268,19 @@ export async function addTransaction(data: Omit<Transaction, 'id' | 'createdAt'>
   await transactionsRepo.add(data)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
+  queryClient.invalidateQueries({ queryKey: ['benefits'] })
 }
 
 export async function updateTransaction(id: number, data: Partial<Transaction>) {
   await transactionsRepo.update(id, data)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
+  queryClient.invalidateQueries({ queryKey: ['benefits'] })
 }
 
 export async function removeTransaction(id: number) {
   await transactionsRepo.remove(id)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
+  queryClient.invalidateQueries({ queryKey: ['benefits'] })
 }
