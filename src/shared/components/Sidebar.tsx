@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/data/supabase'
 import { Button } from '@/shared/components/ui/button'
 import { navItems } from '@/shared/config/nav'
+import { APP_VERSION } from '@/version'
 
 export default function Sidebar() {
   const { theme, toggle } = useThemeStore()
@@ -25,6 +26,7 @@ export default function Sidebar() {
           <TrendingUp className="h-4 w-4 text-primary-foreground" />
         </div>
         <span className="text-sm font-semibold text-sidebar-foreground">Financelli</span>
+        <span className="text-[10px] text-muted-foreground/60 ml-auto">{APP_VERSION}</span>
       </div>
 
       {/* Nav */}
