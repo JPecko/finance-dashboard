@@ -43,9 +43,15 @@ export default function DashboardPage() {
   const { data: benefitsData  = [] } = useMonthlyBenefits(YEAR, MONTH)
   const { data: yearBenefits      } = useYearBenefits(YEAR)
 
-  // Current-month cashback + roundup from already-loaded transactions
-  const cashbackMonth = transactions.filter(t => t.category === 'cashback').reduce((s, t) => s + Math.abs(t.amount), 0)
-  const roundupMonth  = transactions.filter(t => t.category === 'roundup').reduce((s, t) => s + Math.abs(t.amount), 0)
+  // Cashback is virtual (no transaction stored) — computed from expenses × account cashbackPct
+  const cashbackMonth = transactions
+    .filter(t => t.type === 'expense' && t.amount < 0 && t.category !== 'roundup' && t.category !== 'cashback')
+    .reduce((s, t) => {
+      const acc = accounts.find(a => a.id === t.accountId)
+      if (!acc?.cashbackPct) return s
+      return s + Math.floor(Math.abs(t.amount) * acc.cashbackPct / 100)
+    }, 0)
+  const roundupMonth = transactions.filter(t => t.category === 'roundup').reduce((s, t) => s + Math.abs(t.amount), 0)
   const hasBenefits   = accounts.some(a => a.cashbackPct || a.roundupMultiplier)
 
   // Upcoming active rules (top 5 by next due)
