@@ -9,6 +9,7 @@ interface AccountPrefsState {
   colorOrder:  string[]
   loaded:      boolean
   load:            () => Promise<void>
+  reset:           () => void
   setSort:         (sort: SortKey) => void
   setManualOrder:  (order: number[]) => void
   setColorOrder:   (colors: string[]) => void
@@ -19,6 +20,8 @@ export const useAccountPrefsStore = create<AccountPrefsState>()((set, get) => ({
   manualOrder: [],
   colorOrder:  [],
   loaded:      false,
+
+  reset: () => set({ sort: 'default', manualOrder: [], colorOrder: [], loaded: false }),
 
   load: async () => {
     if (get().loaded) return

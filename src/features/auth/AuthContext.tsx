@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/data/supabase'
 import { queryClient } from '@/app/queryClient'
+import { useAccountPrefsStore } from '@/shared/store/accountPrefsStore'
 
 interface AuthContextValue {
   user: User | null
@@ -21,7 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') queryClient.clear()
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear()
+        useAccountPrefsStore.getState().reset()
+      }
       setUser(session?.user ?? null)
     })
 
