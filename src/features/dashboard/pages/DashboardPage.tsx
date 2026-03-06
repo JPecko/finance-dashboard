@@ -2,6 +2,7 @@ import { getYear, getMonth, format } from 'date-fns'
 import {
   Wallet, TrendingUp, TrendingDown, DollarSign, RefreshCw,
   Banknote, PiggyBank, BarChart2, HandCoins, CreditCard,
+  BadgePercent, Coins,
 } from 'lucide-react'
 import type { AccountType } from '@/domain/types'
 import type { LucideIcon } from 'lucide-react'
@@ -12,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { useAccounts, useNetWorth } from '@/shared/hooks/useAccounts'
-import { useMonthSummary, useTransactionsByMonth, useMonthlyNetFlow, isCashFlow } from '@/shared/hooks/useTransactions'
+import { useMonthSummary, useTransactionsByMonth, useMonthlyNetFlow, useMonthlyBenefits, useYearBenefits, isCashFlow } from '@/shared/hooks/useTransactions'
 import { useRecurringRules } from '@/shared/hooks/useRecurringRules'
 import { formatMoney } from '@/domain/money'
 import { getCategoryById } from '@/domain/categories'
@@ -37,8 +38,15 @@ export default function DashboardPage() {
   const summary                   = useMonthSummary(YEAR, MONTH)
   const { data: transactions = [], isLoading: txLoading  } = useTransactionsByMonth(YEAR, MONTH)
   const { data: accounts     = [], isLoading: accLoading } = useAccounts()
-  const { data: allRules     = [] } = useRecurringRules()
-  const { data: lineData     = [] } = useMonthlyNetFlow(YEAR, MONTH)
+  const { data: allRules      = [] } = useRecurringRules()
+  const { data: lineData      = [] } = useMonthlyNetFlow(YEAR, MONTH)
+  const { data: benefitsData  = [] } = useMonthlyBenefits(YEAR, MONTH)
+  const { data: yearBenefits      } = useYearBenefits(YEAR)
+
+  // Current-month cashback + roundup from already-loaded transactions
+  const cashbackMonth = transactions.filter(t => t.category === 'cashback').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const roundupMonth  = transactions.filter(t => t.category === 'roundup').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const hasBenefits   = accounts.some(a => a.cashbackPct || a.roundupMultiplier)
 
   // Upcoming active rules (top 5 by next due)
   const upcomingRules = allRules.filter(r => r.active).slice(0, 5)
@@ -237,6 +245,54 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Benefits (cashback + roundup) — only shown if at least one account has them enabled */}
+      {hasBenefits && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Perks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Two stat rows */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Cashback */}
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+                  <BadgePercent className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Cashback</p>
+                  <p className="text-base font-bold">{formatMoney(cashbackMonth)}</p>
+                  <p className="text-xs text-muted-foreground">YTD: {formatMoney(yearBenefits?.cashback ?? 0)}</p>
+                </div>
+              </div>
+              {/* Roundup */}
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-500/10">
+                  <Coins className="h-4 w-4 text-stone-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Roundup</p>
+                  <p className="text-base font-bold">{formatMoney(roundupMonth)}</p>
+                  <p className="text-xs text-muted-foreground">YTD: {formatMoney(yearBenefits?.roundup ?? 0)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 6-month history chart */}
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={benefitsData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => formatMoney(v).replace(/[^0-9,.-]/g, '')} />
+                <ReTooltip formatter={(v: number | undefined, name: string | undefined) => [v != null ? formatMoney(v) : '', name ?? '']} />
+                <Line type="monotone" dataKey="cashback" name="Cashback" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="roundup"  name="Roundup"  stroke="#78716c" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Upcoming recurring */}
       <Card>

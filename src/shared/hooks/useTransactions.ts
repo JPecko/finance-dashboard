@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getYear, getMonth, format } from 'date-fns'
+import { supabase } from '@/data/supabase'
 import { transactionsRepo } from '@/data/repositories/transactionsRepo'
 import { queryClient } from '@/app/queryClient'
 import { queryKeys } from '@/data/queryKeys'
@@ -73,6 +75,115 @@ export function useMonthSummary(year: number, month: number) {
     personalIncome, personalExpenses, personalBalance: personalIncome + personalExpenses,
     marketGain,
   }
+}
+
+/** Returns monthly cashback + roundup totals (as positive amounts) for the last 6 months ending at (year, month). */
+export function useMonthlyBenefits(year: number, month: number) {
+  return useQuery({
+    queryKey: ['benefits', 'monthly', year, month],
+    queryFn: async () => {
+      const result: { month: string; cashback: number; roundup: number }[] = []
+      for (let i = 5; i >= 0; i--) {
+        const d      = new Date(year, month - 1 - i, 1)
+        const y      = getYear(d)
+        const m      = getMonth(d) + 1
+        const from   = `${y}-${String(m).padStart(2, '0')}-01`
+        const nm     = m === 12 ? 1 : m + 1
+        const ny     = m === 12 ? y + 1 : y
+        const to     = `${ny}-${String(nm).padStart(2, '0')}-01`
+        const { data } = await supabase
+          .from('transactions')
+          .select('amount, category')
+          .in('category', ['cashback', 'roundup'])
+          .gte('date', from)
+          .lt('date', to)
+        const rows = (data ?? []) as { amount: number; category: string }[]
+        result.push({
+          month:    format(d, 'MMM yy'),
+          cashback: rows.filter(r => r.category === 'cashback').reduce((s, r) => s + Math.abs(r.amount), 0),
+          roundup:  rows.filter(r => r.category === 'roundup').reduce((s, r) => s + Math.abs(r.amount), 0),
+        })
+      }
+      return result
+    },
+  })
+}
+
+/** Returns YTD cashback + roundup totals (as positive amounts) for the given year. */
+export function useYearBenefits(year: number) {
+  return useQuery({
+    queryKey: ['benefits', 'year', year],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('amount, category')
+        .in('category', ['cashback', 'roundup'])
+        .gte('date', `${year}-01-01`)
+        .lt('date', `${year + 1}-01-01`)
+      const rows = (data ?? []) as { amount: number; category: string }[]
+      return {
+        cashback: rows.filter(r => r.category === 'cashback').reduce((s, r) => s + Math.abs(r.amount), 0),
+        roundup:  rows.filter(r => r.category === 'roundup').reduce((s, r) => s + Math.abs(r.amount), 0),
+      }
+    },
+  })
+}
+
+// ─── Running balance ─────────────────────────────────────────────────────────
+
+/** Fetches the total amount of transactions AFTER the given month for each account. */
+function useLaterSums(year: number, month: number) {
+  const nextMonth = month === 12 ? 1 : month + 1
+  const nextYear  = month === 12 ? year + 1 : year
+  const afterDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+  return useQuery({
+    queryKey: ['laterSums', year, month],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('account_id, amount')
+        .gte('date', afterDate)
+      const map: Record<number, number> = {}
+      for (const row of (data ?? []) as { account_id: number; amount: number }[]) {
+        map[row.account_id] = (map[row.account_id] ?? 0) + row.amount
+      }
+      return map
+    },
+  })
+}
+
+/**
+ * Computes the account running balance (balance AFTER each transaction) for every
+ * transaction in the given month. Returns a map of { [transactionId]: balance }.
+ *
+ * Algorithm: start from each account's current balance, subtract transactions that
+ * happened after this month to get the end-of-month balance, then walk the month's
+ * transactions newest-first to derive each transaction's post-balance.
+ */
+export function useRunningBalances(year: number, month: number): Record<number, number> {
+  const { data: accounts = [] } = useAccounts()
+  const { data: txs      = [] } = useTransactionsByMonth(year, month)
+  const { data: laterSums = {} } = useLaterSums(year, month)
+
+  return useMemo(() => {
+    if (txs.length === 0) return {}
+
+    // Balance of each account at the end of the displayed month
+    const endBalance: Record<number, number> = {}
+    for (const acc of accounts) {
+      endBalance[acc.id!] = acc.balance - (laterSums[acc.id!] ?? 0)
+    }
+
+    // Walk transactions from newest → oldest (txs are already sorted date+created_at desc)
+    const result: Record<number, number> = {}
+    const running = { ...endBalance }
+    for (const tx of txs) {
+      if (tx.id == null) continue
+      result[tx.id] = running[tx.accountId] ?? 0      // balance AFTER this tx
+      running[tx.accountId] = (running[tx.accountId] ?? 0) - tx.amount  // step back in time
+    }
+    return result
+  }, [accounts, txs, laterSums])
 }
 
 // ─── Mutations ───────────────────────────────────────────────────────────────

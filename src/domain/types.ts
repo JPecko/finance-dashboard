@@ -17,8 +17,10 @@ export interface Account {
   ownerId?: string      // user_id of the owner
   ownerEmail?: string
   ownerFullName?: string
-  participants?: number // 1 + number of shares (maintained by DB trigger)
+  participants?: number    // 1 + number of shares (maintained by DB trigger)
   sharedWith?: AccountShare[] // list of users this account is shared with (guests only)
+  cashbackPct?: number     // e.g. 1 = 1% cashback on expenses (null = disabled)
+  roundupMultiplier?: number // e.g. 5 = ×5 roundup on expenses (null = disabled)
 }
 
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'revaluation'

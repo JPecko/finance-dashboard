@@ -22,12 +22,24 @@ const COLORS = [
   '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6',
 ]
 
+const ROUNDUP_OPTIONS = [
+  { value: 'off', label: 'Disabled' },
+  { value: '1',   label: '×1' },
+  { value: '2',   label: '×2' },
+  { value: '3',   label: '×3' },
+  { value: '4',   label: '×4' },
+  { value: '5',   label: '×5' },
+  { value: '10',  label: '×10' },
+]
+
 interface FormValues {
   name: string
   type: AccountType
   balance: string
   currency: string
   color: string
+  cashbackPct: string
+  roundupMultiplier: string
 }
 
 interface Props {
@@ -46,33 +58,40 @@ export default function AccountFormModal({ open, onClose, account }: Props) {
       balance: '0',
       currency: 'EUR',
       color: COLORS[0],
+      cashbackPct: '',
+      roundupMultiplier: '',
     },
   })
 
-  const selectedColor = watch('color')
-  const selectedType  = watch('type')
+  const selectedColor    = watch('color')
+  const selectedType     = watch('type')
+  const selectedRoundup  = watch('roundupMultiplier')
 
   useEffect(() => {
     if (open && account) {
       reset({
-        name:     account.name,
-        type:     account.type,
-        balance:  fromCents(account.balance).toFixed(2),
-        currency: account.currency,
-        color:    account.color,
+        name:              account.name,
+        type:              account.type,
+        balance:           fromCents(account.balance).toFixed(2),
+        currency:          account.currency,
+        color:             account.color,
+        cashbackPct:       account.cashbackPct != null ? String(account.cashbackPct) : '',
+        roundupMultiplier: account.roundupMultiplier != null ? String(account.roundupMultiplier) : 'off',
       })
     } else if (open) {
-      reset({ name: '', type: 'checking', balance: '0', currency: 'EUR', color: COLORS[0] })
+      reset({ name: '', type: 'checking', balance: '0', currency: 'EUR', color: COLORS[0], cashbackPct: '', roundupMultiplier: 'off' })
     }
   }, [open, account, reset])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
-      name:     values.name.trim(),
-      type:     values.type,
-      balance:  toCents(parseFloat(values.balance) || 0),
-      currency: values.currency,
-      color:    values.color,
+      name:              values.name.trim(),
+      type:              values.type,
+      balance:           toCents(parseFloat(values.balance) || 0),
+      currency:          values.currency,
+      color:             values.color,
+      cashbackPct:       values.cashbackPct ? parseFloat(values.cashbackPct) : undefined,
+      roundupMultiplier: values.roundupMultiplier && values.roundupMultiplier !== 'off' ? parseInt(values.roundupMultiplier) : undefined,
     }
     if (isEdit && account?.id != null) {
       await updateAccount(account.id, payload)
@@ -159,6 +178,37 @@ export default function AccountFormModal({ open, onClose, account }: Props) {
                   onClick={() => setValue('color', c)}
                 />
               ))}
+            </div>
+          </div>
+
+          {/* Cashback & Roundup */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="acc-cashback">Cashback %</Label>
+              <Input
+                id="acc-cashback"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="Disabled"
+                {...register('cashbackPct', {
+                  min: { value: 0, message: '≥ 0' },
+                  max: { value: 100, message: '≤ 100' },
+                })}
+              />
+              {errors.cashbackPct && <p className="text-xs text-destructive">{errors.cashbackPct.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Roundup</Label>
+              <Select value={selectedRoundup} onValueChange={v => setValue('roundupMultiplier', v)}>
+                <SelectTrigger><SelectValue placeholder="Disabled" /></SelectTrigger>
+                <SelectContent>
+                  {ROUNDUP_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

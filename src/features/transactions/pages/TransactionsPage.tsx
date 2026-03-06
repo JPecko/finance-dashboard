@@ -6,7 +6,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
-import { useTransactionsByMonth, useMonthSummary, removeTransaction } from '@/shared/hooks/useTransactions'
+import { useTransactionsByMonth, useMonthSummary, useRunningBalances, removeTransaction } from '@/shared/hooks/useTransactions'
 import { useAccounts } from '@/shared/hooks/useAccounts'
 import { formatMoney } from '@/domain/money'
 import { formatDate } from '@/shared/utils/format'
@@ -30,6 +30,7 @@ export default function TransactionsPage() {
   const { data: transactions = [], isLoading } = useTransactionsByMonth(year, month)
   const summary                     = useMonthSummary(year, month)
   const { data: accounts     = [] } = useAccounts()
+  const runningBalances              = useRunningBalances(year, month)
 
   const accountMap  = Object.fromEntries(accounts.map(a => [a.id!, a.name]))
   const currentDate = new Date(year, month - 1, 1)
@@ -144,7 +145,7 @@ export default function TransactionsPage() {
                 ? 'text-blue-600 dark:text-blue-400'
                 : isIncome ? 'text-emerald-600' : 'text-rose-600'
 
-              const accountCell = isTransfer ? (
+              const accountName = isTransfer ? (
                 <span className="flex items-center gap-0.5 min-w-0 truncate">
                   <span className="truncate">{accountMap[tx.accountId] ?? '?'}</span>
                   <ArrowRight className="h-3 w-3 shrink-0" />
@@ -153,6 +154,7 @@ export default function TransactionsPage() {
               ) : (
                 <span className="truncate">{accountMap[tx.accountId] ?? '—'}</span>
               )
+              const txBalance = tx.id != null ? runningBalances[tx.id] : undefined
 
               return (
                 <div
@@ -179,9 +181,12 @@ export default function TransactionsPage() {
                       {cat.label}
                     </Badge>
                   </div>
-                  <span className="hidden sm:block text-sm text-muted-foreground truncate">
-                    {accountCell}
-                  </span>
+                  <div className="hidden sm:block min-w-0">
+                    <div className="text-sm text-muted-foreground truncate">{accountName}</div>
+                    {txBalance != null && (
+                      <div className="text-xs text-muted-foreground/60 tabular-nums">{formatMoney(txBalance)}</div>
+                    )}
+                  </div>
 
                   {/* ── Mobile: 3-line layout ── */}
                   <div className="sm:hidden flex-1 min-w-0">
@@ -200,7 +205,10 @@ export default function TransactionsPage() {
                       </Badge>
                     </div>
                     <div className="text-sm text-muted-foreground mt-0.5 truncate">
-                      {accountCell}
+                      {accountName}
+                      {txBalance != null && (
+                        <span className="ml-1.5 text-xs text-muted-foreground/60 tabular-nums">{formatMoney(txBalance)}</span>
+                      )}
                     </div>
                   </div>
 
