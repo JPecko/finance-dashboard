@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && !autoApplied) {
         autoApplied = true
+        void useAccountPrefsStore.getState().load()
         void autoApplyDueRules()
       }
       setUser(session?.user ?? null)
