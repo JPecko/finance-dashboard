@@ -17,16 +17,18 @@ export function useTransactionsByMonth(year: number, month: number) {
   })
 }
 
-/** Fetches net cash-flow for the 6 months ending at (year, month). Used for the line chart. */
+/** Fetches income, expenses and net cash-flow for the 6 months ending at (year, month). */
 export function useMonthlyNetFlow(year: number, month: number) {
   return useQuery({
     queryKey: queryKeys.transactions.netFlow(year, month),
     queryFn:  async () => {
-      const result: { month: string; net: number }[] = []
+      const result: { month: string; income: number; expenses: number; net: number }[] = []
       for (let i = 5; i >= 0; i--) {
         const d    = new Date(year, month - 1 - i, 1)
-        const txs  = await transactionsRepo.getByMonth(getYear(d), getMonth(d) + 1)
-        result.push({ month: format(d, 'MMM yy'), net: txs.filter(isCashFlow).reduce((s, t) => s + t.amount, 0) })
+        const cash = (await transactionsRepo.getByMonth(getYear(d), getMonth(d) + 1)).filter(isCashFlow)
+        const income   = cash.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
+        const expenses = cash.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+        result.push({ month: format(d, 'MMM yy'), income, expenses, net: income - expenses })
       }
       return result
     },
