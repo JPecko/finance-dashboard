@@ -11,6 +11,7 @@ type AccountRow = {
   color: string
   created_at: string
   participants: number
+  bank_code: string | null
   cashback_pct: number | null
   roundup_multiplier: number | null
 }
@@ -27,6 +28,7 @@ function toAccount(row: AccountRow): Account {
     createdAt:         row.created_at,
     participants:      row.participants ?? 1,
     sharedWith:        [],
+    bankCode:          row.bank_code ?? undefined,
     cashbackPct:       row.cashback_pct ?? undefined,
     roundupMultiplier: row.roundup_multiplier ?? undefined,
   }
@@ -108,6 +110,7 @@ export const accountsRepo = {
         balance:            account.balance,
         currency:           account.currency,
         color:              account.color,
+        bank_code:          account.bankCode ?? null,
         cashback_pct:       account.cashbackPct ?? null,
         roundup_multiplier: account.roundupMultiplier ?? null,
       })
@@ -124,6 +127,7 @@ export const accountsRepo = {
     if (changes.balance           !== undefined) row.balance            = changes.balance
     if (changes.currency          !== undefined) row.currency           = changes.currency
     if (changes.color             !== undefined) row.color              = changes.color
+    if (changes.bankCode          !== undefined) row.bank_code          = changes.bankCode ?? null
     if (changes.cashbackPct       !== undefined) row.cashback_pct       = changes.cashbackPct ?? null
     if (changes.roundupMultiplier !== undefined) row.roundup_multiplier = changes.roundupMultiplier ?? null
     const { error } = await supabase.from('accounts').update(row).eq('id', id)

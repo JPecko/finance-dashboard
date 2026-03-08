@@ -19,6 +19,7 @@ export interface Account {
   ownerFullName?: string
   participants?: number    // 1 + number of shares (maintained by DB trigger)
   sharedWith?: AccountShare[] // list of users this account is shared with (guests only)
+  bankCode?: string        // e.g. 'revolut' — matches BANK_OPTIONS code
   cashbackPct?: number     // e.g. 1 = 1% cashback on expenses (null = disabled)
   roundupMultiplier?: number // e.g. 5 = ×5 roundup on expenses (null = disabled)
 }
