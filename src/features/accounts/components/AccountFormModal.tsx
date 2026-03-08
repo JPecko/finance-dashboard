@@ -7,8 +7,7 @@ import { Label } from '@/shared/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { toCents, fromCents } from '@/domain/money'
 import { addAccount, updateAccount } from '@/shared/hooks/useAccounts'
-import { BANK_OPTIONS, bankApiLogoUrl } from '@/shared/config/banks'
-import { useAccountBankStore } from '@/shared/store/accountBankStore'
+import { BANK_OPTIONS } from '@/shared/config/banks'
 import type { Account, AccountType } from '@/domain/types'
 
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
@@ -53,7 +52,6 @@ interface Props {
 
 export default function AccountFormModal({ open, onClose, account }: Props) {
   const isEdit = !!account
-  const { bankByAccountId, setBankMeta, clearBankMeta } = useAccountBankStore()
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
@@ -75,10 +73,9 @@ export default function AccountFormModal({ open, onClose, account }: Props) {
 
   useEffect(() => {
     if (open && account) {
-      const bankMeta = account.id != null ? bankByAccountId[account.id] : undefined
       reset({
         name:              account.name,
-        bankCode:          bankMeta?.bankCode ?? 'none',
+        bankCode:          account.bankCode ?? 'none',
         type:              account.type,
         balance:           fromCents(account.balance).toFixed(2),
         currency:          account.currency,
@@ -98,7 +95,7 @@ export default function AccountFormModal({ open, onClose, account }: Props) {
         roundupMultiplier: 'off',
       })
     }
-  }, [open, account, reset, bankByAccountId])
+  }, [open, account, reset])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
@@ -107,35 +104,14 @@ export default function AccountFormModal({ open, onClose, account }: Props) {
       balance:           toCents(parseFloat(values.balance) || 0),
       currency:          values.currency,
       color:             values.color,
+      bankCode:          values.bankCode !== 'none' ? values.bankCode : undefined,
       cashbackPct:       values.cashbackPct ? parseFloat(values.cashbackPct) : undefined,
       roundupMultiplier: values.roundupMultiplier && values.roundupMultiplier !== 'off' ? parseInt(values.roundupMultiplier) : undefined,
     }
     if (isEdit && account?.id != null) {
       await updateAccount(account.id, payload)
-      if (values.bankCode && values.bankCode !== 'none') {
-        const bank = BANK_OPTIONS.find(b => b.code === values.bankCode)
-        if (bank) {
-          setBankMeta(account.id, {
-            bankCode: bank.code,
-            bankName: bank.name,
-            bankLogoUrl: bankApiLogoUrl(bank.logoDomain),
-          })
-        }
-      } else {
-        clearBankMeta(account.id)
-      }
     } else {
-      const created = await addAccount(payload)
-      if (created?.id != null && values.bankCode && values.bankCode !== 'none') {
-        const bank = BANK_OPTIONS.find(b => b.code === values.bankCode)
-        if (bank) {
-          setBankMeta(created.id, {
-            bankCode: bank.code,
-            bankName: bank.name,
-            bankLogoUrl: bankApiLogoUrl(bank.logoDomain),
-          })
-        }
-      }
+      await addAccount(payload)
     }
     onClose()
   }

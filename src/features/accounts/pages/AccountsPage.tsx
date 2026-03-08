@@ -20,8 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAccounts, sortAccounts, removeAccount } from '@/shared/hooks/useAccounts'
 import { useAccountPrefsStore, type SortKey } from '@/shared/store/accountPrefsStore'
-import { useAccountBankStore } from '@/shared/store/accountBankStore'
-import { BANK_OPTIONS } from '@/shared/config/banks'
+import { BANK_OPTIONS, bankApiLogoUrl } from '@/shared/config/banks'
 import { useAuth } from '@/features/auth/AuthContext'
 import { formatMoney } from '@/domain/money'
 import EmptyState from '@/shared/components/EmptyState'
@@ -84,8 +83,6 @@ function SortableCard({ account, isManual, children }: SortableCardProps) {
 
 export default function AccountsPage() {
   const { data: accounts = [], isLoading } = useAccounts()
-  const bankByAccountId = useAccountBankStore(s => s.bankByAccountId)
-  const clearBankMeta = useAccountBankStore(s => s.clearBankMeta)
   const { user } = useAuth()
   const {
     sort, manualOrder, colorOrder, loaded,
@@ -194,7 +191,6 @@ export default function AccountsPage() {
     if (id == null) return
     if (confirm('Delete this account? All associated transactions will remain.')) {
       await removeAccount(id)
-      clearBankMeta(id)
     }
   }
 
@@ -313,8 +309,7 @@ export default function AccountsPage() {
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
               {sorted.map(account => {
                 const isInvestment = account.type === 'investment'
-                const bankMeta = account.id != null ? bankByAccountId[account.id] : undefined
-                const selectedBank = bankMeta ? BANK_OPTIONS.find(b => b.code === bankMeta.bankCode) : undefined
+                const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
                 return (
                   <SortableCard key={account.id} account={account} isManual={isManualEditing}>
                     <Card className="overflow-hidden card-hoverable">
@@ -328,15 +323,13 @@ export default function AccountsPage() {
                           <div className="mt-2 flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 min-w-0">
-                                {bankMeta?.bankLogoUrl ? (
+                                {bank ? (
                                   <img
-                                    src={bankMeta.bankLogoUrl}
-                                    alt={bankMeta.bankName}
+                                    src={bankApiLogoUrl(bank.logoDomain)}
+                                    alt={bank.name}
                                     className="h-4 w-4 rounded-sm object-contain shrink-0"
                                     loading="lazy"
-                                    onError={(e) => {
-                                      if (selectedBank) e.currentTarget.src = selectedBank.logoPath
-                                    }}
+                                    onError={(e) => { e.currentTarget.src = bank.logoPath }}
                                   />
                                 ) : (
                                   <span
@@ -345,7 +338,7 @@ export default function AccountsPage() {
                                   />
                                 )}
                                 <p className="text-xs text-muted-foreground truncate">
-                                  {bankMeta?.bankName ?? 'No bank'}
+                                  {bank?.name ?? 'No bank'}
                                 </p>
                               </div>
 
