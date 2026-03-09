@@ -9,7 +9,10 @@ import { Label } from '@/shared/components/ui/label'
 import { supabase } from '@/data/supabase'
 import { useT } from '@/shared/i18n'
 import { useLanguageStore } from '@/shared/store/languageStore'
+import { APP_VERSION } from '@/version'
 import BrandLogo from '@/shared/components/BrandLogo'
+import { hasAppUpdate } from '@/shared/utils/checkForAppUpdate'
+import { hardRefreshApp } from '@/shared/utils/hardRefreshApp'
 
 interface FormValues {
   email:           string
@@ -25,6 +28,11 @@ export default function LoginPage() {
   const [error, setError]         = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const navigate = useNavigate()
+  const handleLogoClick = async () => {
+    if (await hasAppUpdate()) {
+      await hardRefreshApp()
+    }
+  }
 
   const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     shouldUnregister: true,
@@ -62,7 +70,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-start justify-center bg-background p-4 pt-8 sm:pt-12">
       <div className="w-full max-w-sm space-y-6">
-        <div className="flex justify-end">
+        <div className="mt-2 flex items-center justify-end">
           <button
             type="button"
             onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}
@@ -76,8 +84,15 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center gap-2.5">
-          {/* <BrandLogo variant="mark" className="h-14 w-14" /> */}
-          <BrandLogo variant="wordmark" className="h-10 text-foreground" />
+          <button
+            type="button"
+            onClick={() => { void handleLogoClick() }}
+            className="cursor-pointer"
+            aria-label="Check app updates"
+            title="Check app updates"
+          >
+            <BrandLogo variant="wordmark" className="h-10 text-foreground" />
+          </button>
           <h1 className="sr-only">Financelli</h1>
           <p className="text-sm text-muted-foreground">{t('auth.appDescription')}</p>
         </div>
@@ -187,6 +202,7 @@ export default function LoginPage() {
                 {mode === 'login' ? t('auth.signUpLink') : t('auth.signInLink')}
               </button>
             </p>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground/60">{APP_VERSION}</p>
           </CardContent>
         </Card>
       </div>
