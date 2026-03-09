@@ -13,6 +13,8 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
 import BrandLogo from '@/shared/components/BrandLogo'
+import { hardRefreshApp } from '@/shared/utils/hardRefreshApp'
+import { hasAppUpdate } from '@/shared/utils/checkForAppUpdate'
 
 export default function Sidebar() {
   const { theme, toggle } = useThemeStore()
@@ -21,6 +23,13 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const t = useT()
   const handleLogout = () => supabase.auth.signOut()
+  const handleLogoClick = async () => {
+    if (await hasAppUpdate()) {
+      await hardRefreshApp()
+      return
+    }
+    navigate('/dashboard')
+  }
 
   const displayName = user?.user_metadata?.full_name as string | undefined
   const initials = displayName
@@ -30,10 +39,16 @@ export default function Sidebar() {
   return (
     <aside className="hidden lg:flex h-screen w-60 flex-col border-r border-border bg-sidebar">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border">
+      <button
+        type="button"
+        onClick={() => { void handleLogoClick() }}
+        className="flex w-full items-center gap-2 px-6 py-5 border-b border-sidebar-border text-left cursor-pointer"
+        aria-label="Check app updates"
+        title="Check app updates"
+      >
         <BrandLogo variant="wordmark" className="h-7 text-sidebar-foreground" />
         <span className="text-[10px] text-muted-foreground/60 ml-auto">{APP_VERSION}</span>
-      </div>
+      </button>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">

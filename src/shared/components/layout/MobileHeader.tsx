@@ -7,6 +7,8 @@ import { supabase } from '@/data/supabase'
 import { APP_VERSION } from '@/version'
 import { useT } from '@/shared/i18n'
 import BrandLogo from '@/shared/components/BrandLogo'
+import { hardRefreshApp } from '@/shared/utils/hardRefreshApp'
+import { hasAppUpdate } from '@/shared/utils/checkForAppUpdate'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -18,6 +20,13 @@ export default function MobileHeader() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const t = useT()
+  const handleLogoClick = async () => {
+    if (await hasAppUpdate()) {
+      await hardRefreshApp()
+      return
+    }
+    navigate('/dashboard')
+  }
 
   const displayName = user?.user_metadata?.full_name as string | undefined
   const initials = displayName
@@ -26,11 +35,17 @@ export default function MobileHeader() {
 
   return (
     <header className="lg:hidden flex items-center justify-between gap-3 border-b border-border px-4 py-2 safe-area-top-pad-3 bg-sidebar">
-      <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => { void handleLogoClick() }}
+        className="flex items-center gap-1 cursor-pointer"
+        aria-label="Check app updates"
+        title="Check app updates"
+      >
         <BrandLogo variant="mark" className="h-8 w-8" />
         <span className="text-sm font-semibold text-white tracking-tight">Financelli</span>
         <span className="text-[10px] text-muted-foreground/60">{APP_VERSION}</span>
-      </div>
+      </button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
