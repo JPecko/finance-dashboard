@@ -41,6 +41,12 @@ interface ListRowProps {
   value: React.ReactNode
 }
 
+function formatTooltipValue(value: unknown) {
+  if (typeof value === 'number') return formatMoney(value)
+  if (typeof value === 'string') return value
+  return ''
+}
+
 function ListRow({ icon, label, sublabel, value }: ListRowProps) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 min-w-0 py-2.5">
@@ -291,7 +297,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis width={50} tick={{ fontSize: 11 }} tickFormatter={v => formatMoney(v).replace(/[^0-9,.-]/g, '')} />
-                  <ReTooltip formatter={(v: number | undefined, name: string | undefined) => [v != null ? formatMoney(v) : '', name ?? '']} />
+                  <ReTooltip formatter={(value, name) => [formatTooltipValue(value), String(name ?? '')]} />
                   <Line type="monotone" dataKey="cashback" name={t('dashboard.cashback')} stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="roundup"  name={t('dashboard.roundup')}  stroke="#78716c" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
@@ -315,7 +321,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                 <YAxis width={50} tick={{ fontSize: 11 }} tickFormatter={v => formatMoney(v).replace(/[^0-9,.-]/g, '')} />
-                <ReTooltip formatter={(v: number | undefined) => v != null ? formatMoney(v) : ''} />
+                <ReTooltip formatter={value => formatTooltipValue(value)} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="income"   name={t('dashboard.income')}   fill="#22c55e" radius={[3, 3, 0, 0]} maxBarSize={28} />
                 <Bar dataKey="expenses" name={t('dashboard.expenses')} fill="#f43f5e" radius={[3, 3, 0, 0]} maxBarSize={28} />
@@ -425,7 +431,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis width={50} tick={{ fontSize: 11 }} tickFormatter={v => formatMoney(v).replace(/[^0-9,.-]/g, '')} />
-                  <ReTooltip formatter={(v: number | undefined, name: string | undefined) => [v != null ? formatMoney(v) : '', name ?? '']} />
+                  <ReTooltip formatter={(value, name) => [formatTooltipValue(value), String(name ?? '')]} />
                   <Line type="monotone" dataKey="cashback" name={t('dashboard.cashback')} stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="roundup"  name={t('dashboard.roundup')}  stroke="#78716c" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
