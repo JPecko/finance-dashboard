@@ -18,6 +18,8 @@ import { formatMoney } from '@/domain/money'
 import { getCategoryById } from '@/domain/categories'
 import { formatDate } from '@/shared/utils/format'
 import PageLoader from '@/shared/components/PageLoader'
+import BankLogo from '@/shared/components/BankLogo'
+import { BANK_OPTIONS } from '@/shared/config/banks'
 
 const now   = new Date()
 const YEAR  = getYear(now)
@@ -225,10 +227,21 @@ export default function DashboardPage() {
             ) : accounts.map(account => {
               const meta = ACCOUNT_TYPE_META[account.type]
               const Icon = meta.icon
+              const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
               return (
                 <ListRow
                   key={account.id}
-                  icon={<Icon className="h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />}
+                  icon={bank ? (
+                    <BankLogo
+                      domain={bank.logoDomain}
+                      name={bank.name}
+                      accountType={account.type}
+                      imgClassName="h-6 w-6 rounded-sm object-contain shrink-0"
+                      iconClassName="h-5 w-5 shrink-0 text-muted-foreground"
+                    />
+                  ) : (
+                    <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
+                  )}
                   label={account.name}
                   value={
                     <span className={`text-sm font-medium tabular-nums ${account.balance < 0 ? 'text-rose-600' : ''}`}>
