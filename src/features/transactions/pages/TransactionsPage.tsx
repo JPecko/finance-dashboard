@@ -6,8 +6,10 @@ import PageLoader from "@/shared/components/PageLoader";
 import TransactionFormModal from "../components/TransactionFormModal";
 import TransactionRow, { TRANSACTIONS_GRID_COLS } from "../components/TransactionRow";
 import { useTransactionsPageModel } from "./useTransactionsPageModel";
+import { useT } from "@/shared/i18n";
 
 export default function TransactionsPage() {
+  const t = useT()
   const {
     currentDate,
     modalOpen,
@@ -29,12 +31,12 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Transactions</h1>
+          <h1 className="text-2xl font-bold">{t('transactions.title')}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{format(currentDate, "MMMM yyyy")}</p>
         </div>
         <Button onClick={openCreateModal}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Transaction
+          {t('transactions.addTransaction')}
         </Button>
       </div>
 
@@ -55,16 +57,16 @@ export default function TransactionsPage() {
 
       {/* Transaction list */}
       {isLoading ? (
-        <PageLoader message="Loading transactions..." />
+        <PageLoader message={t('transactions.loading')} />
       ) : transactions.length === 0 ? (
         <EmptyState
           icon={ArrowLeftRight}
-          title="No transactions this month"
-          description="Start adding your income and expenses to track your monthly spending."
+          title={t('transactions.noTransactions')}
+          description={t('transactions.noTransactionsDesc')}
           action={
             <Button onClick={openCreateModal}>
               <Plus className="h-4 w-4 mr-2" />
-              Add first transaction
+              {t('transactions.addFirst')}
             </Button>
           }
         />
@@ -74,11 +76,11 @@ export default function TransactionsPage() {
           <div
             className={`hidden md:grid ${TRANSACTIONS_GRID_COLS} gap-x-3 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border`}
           >
-            <span>Date</span>
-            <span>Description</span>
-            <span>Account</span>
-            <span>Category</span>
-            <span className="text-right">Amount</span>
+            <span>{t('transactions.colDate')}</span>
+            <span>{t('transactions.colDescription')}</span>
+            <span>{t('transactions.colAccount')}</span>
+            <span>{t('transactions.colCategory')}</span>
+            <span className="text-right">{t('transactions.colAmount')}</span>
             <span />
           </div>
 

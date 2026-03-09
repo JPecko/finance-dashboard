@@ -2,10 +2,12 @@ import { useNavigate, NavLink } from 'react-router-dom'
 import { TrendingUp, Sun, Moon, LogOut, Settings, Languages } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThemeStore } from '@/shared/store/themeStore'
+import { useLanguageStore } from '@/shared/store/languageStore'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/data/supabase'
 import { navItems } from '@/shared/config/nav'
 import { APP_VERSION } from '@/version'
+import { useT } from '@/shared/i18n'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -13,8 +15,10 @@ import {
 
 export default function Sidebar() {
   const { theme, toggle } = useThemeStore()
+  const { lang, setLang } = useLanguageStore()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
   const handleLogout = () => supabase.auth.signOut()
 
   const displayName = user?.user_metadata?.full_name as string | undefined
@@ -36,7 +40,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, labelKey, icon: Icon }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -51,7 +55,7 @@ export default function Sidebar() {
                 }
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {label}
+                {t(labelKey)}
               </NavLink>
             </li>
           ))}
@@ -60,24 +64,27 @@ export default function Sidebar() {
 
       {/* Footer — theme/language quick actions + avatar menu */}
       <div className="border-t border-sidebar-border px-3 py-3 space-y-1">
+        {/* Quick actions */}
         <div className="flex items-center gap-1 px-2 pb-1">
           <button
             onClick={toggle}
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors cursor-pointer"
-            aria-label="Toggle theme"
+            aria-label={t(theme === 'dark' ? 'sidebar.themeLight' : 'sidebar.themeDark')}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
+          {/* Language toggle */}
           <button
-            disabled
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-40 cursor-not-allowed"
-            aria-label="Language (coming soon)"
+            onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}
+            className="flex h-7 items-center gap-1 px-2 rounded-md text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors cursor-pointer"
+            aria-label={t('sidebar.language')}
           >
-            <Languages className="h-4 w-4" />
+            <Languages className="h-3.5 w-3.5" />
+            {lang.toUpperCase()}
           </button>
-          <span className="text-[10px] text-muted-foreground/50 ml-1">EN</span>
         </div>
 
+        {/* Avatar — opens profile menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 hover:bg-sidebar-accent transition-colors text-left cursor-pointer">
@@ -95,21 +102,21 @@ export default function Sidebar() {
               {theme === 'dark'
                 ? <Sun className="h-4 w-4 mr-2" />
                 : <Moon className="h-4 w-4 mr-2" />}
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              {t(theme === 'dark' ? 'sidebar.themeLight' : 'sidebar.themeDark')}
             </DropdownMenuItem>
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}>
               <Languages className="h-4 w-4 mr-2" />
-              Language
-              <span className="ml-auto text-xs text-muted-foreground">EN</span>
+              {t('sidebar.language')}
+              <span className="ml-auto text-xs text-muted-foreground">{lang.toUpperCase()}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/settings')}>
               <Settings className="h-4 w-4 mr-2" />
-              Settings
+              {t('sidebar.settings')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4 mr-2" />
-              Sign out
+              {t('sidebar.signOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

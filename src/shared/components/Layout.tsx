@@ -4,10 +4,12 @@ import { TrendingUp, Sun, Moon, LogOut, Settings, Languages } from 'lucide-react
 import Sidebar from './Sidebar'
 import { useAccountPrefsStore } from '@/shared/store/accountPrefsStore'
 import { useThemeStore } from '@/shared/store/themeStore'
+import { useLanguageStore } from '@/shared/store/languageStore'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/data/supabase'
 import { navItems } from '@/shared/config/nav'
 import { APP_VERSION } from '@/version'
+import { useT } from '@/shared/i18n'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -17,19 +19,19 @@ const MOBILE_NAV_ORDER = ['/dashboard', '/transactions', '/accounts', '/recurrin
 const mobileNavItems = MOBILE_NAV_ORDER.map(to => navItems.find(n => n.to === to)!)
 
 function BottomNav() {
+  const t = useT()
   return (
     <nav className="lg:hidden flex items-stretch border-t border-border bg-sidebar safe-area-bottom-pad-3">
-      {mobileNavItems.map(({ to, label, icon: Icon }) => (
+      {mobileNavItems.map(({ to, labelKey, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
           end
           className="group/tab flex flex-1 flex-col items-center gap-1 pb-2 pt-3 transition-colors text-muted-foreground hover:text-foreground [&.active]:text-primary"
         >
-          {/* Indicator pill — visible when NavLink has the auto-added .active class */}
           <span className="h-0.5 w-5 rounded-full bg-current opacity-0 group-[.active]/tab:opacity-100 transition-opacity" />
           <Icon className="h-5 w-5" />
-          <span className="text-[10px] font-medium leading-none">{label}</span>
+          <span className="text-[10px] font-medium leading-none">{t(labelKey)}</span>
         </NavLink>
       ))}
     </nav>
@@ -38,8 +40,10 @@ function BottomNav() {
 
 function MobileHeader() {
   const { theme, toggle } = useThemeStore()
+  const { lang, setLang } = useLanguageStore()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
 
   const displayName = user?.user_metadata?.full_name as string | undefined
   const initials = displayName
@@ -68,21 +72,21 @@ function MobileHeader() {
             {theme === 'dark'
               ? <Sun className="h-4 w-4 mr-2" />
               : <Moon className="h-4 w-4 mr-2" />}
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            {t(theme === 'dark' ? 'sidebar.themeLight' : 'sidebar.themeDark')}
           </DropdownMenuItem>
-          <DropdownMenuItem disabled>
+          <DropdownMenuItem onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}>
             <Languages className="h-4 w-4 mr-2" />
-            Language
-            <span className="ml-auto text-xs text-muted-foreground">EN</span>
+            {t('sidebar.language')}
+            <span className="ml-auto text-xs text-muted-foreground">{lang.toUpperCase()}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => navigate('/settings')}>
             <Settings className="h-4 w-4 mr-2" />
-            Settings
+            {t('sidebar.settings')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => supabase.auth.signOut()} className="text-destructive focus:text-destructive">
             <LogOut className="h-4 w-4 mr-2" />
-            Sign out
+            {t('sidebar.signOut')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
