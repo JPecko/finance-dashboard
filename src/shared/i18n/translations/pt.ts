@@ -212,6 +212,8 @@ export const pt: typeof en = {
     splitBy:  'Dividir por',
     people:   'pessoas',
     myShare:  'minha parte',
+    reimbursable:     'Reembolsável',
+    reimbursableDesc: 'Pago em nome de outra pessoa — não contabilizado nas tuas despesas pessoais',
   },
 
   recurring: {

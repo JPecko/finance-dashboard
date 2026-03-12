@@ -31,6 +31,7 @@ export default function TransactionFormModal({ open, onClose, transaction, defau
     selectedFrom,
     selectedTo,
     splitN,
+    isReimbursable,
     handleTypeChange,
     handleFromChange,
     onSubmit,
@@ -64,11 +65,13 @@ export default function TransactionFormModal({ open, onClose, transaction, defau
               <Label htmlFor="tx-amount">Amount</Label>
               <Input
                 id="tx-amount"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
-                {...register('amount', { required: 'Required', min: { value: 0.01, message: 'Must be > 0' } })}
+                {...register('amount', {
+                  required: 'Required',
+                  validate: v => parseFloat(String(v).replace(',', '.')) >= 0.01 || 'Must be > 0',
+                })}
               />
               {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
             </div>
@@ -125,6 +128,22 @@ export default function TransactionFormModal({ open, onClose, transaction, defau
                 </div>
               )}
             </div>
+          )}
+
+          {selectedType === 'expense' && (
+            <label
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border cursor-pointer hover:bg-accent/60 transition-colors"
+              onClick={e => { e.preventDefault(); setValue('isReimbursable', !isReimbursable) }}
+            >
+              <div>
+                <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('transactions.reimbursableDesc')}</p>
+              </div>
+              <div className="relative shrink-0">
+                <div className={`h-5 w-9 rounded-full transition-colors ${isReimbursable ? 'bg-amber-500' : 'bg-muted'}`} />
+                <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${isReimbursable ? 'left-5' : 'left-1'}`} />
+              </div>
+            </label>
           )}
 
           <DialogFooter>

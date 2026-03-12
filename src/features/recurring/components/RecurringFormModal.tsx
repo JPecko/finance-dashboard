@@ -48,8 +48,9 @@ interface FormValues {
   description:  string
   frequency:    RecurringFrequency
   startDate:    string
-  isShared:     boolean
-  splitN:       number
+  isShared:       boolean
+  splitN:         number
+  isReimbursable: boolean
 }
 
 interface Props {
@@ -80,8 +81,9 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
       description:  '',
       frequency:    'monthly',
       startDate:    format(new Date(), 'yyyy-MM-dd'),
-      isShared:     true,
-      splitN:       2,
+      isShared:       true,
+      splitN:         2,
+      isReimbursable: false,
     },
   })
 
@@ -92,6 +94,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
   const selectedFreq     = watch('frequency')
   const isShared         = watch('isShared')
   const splitN           = watch('splitN')
+  const isReimbursable   = watch('isReimbursable')
   const isTransfer       = selectedType === 'transfer'
 
   const categories =
@@ -111,8 +114,9 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
         description:  rule.description,
         frequency:    rule.frequency,
         startDate:    rule.startDate,
-        isShared:     !(rule.isPersonal ?? false),
-      splitN:       rule.splitN ?? 2,
+        isShared:       !(rule.isPersonal ?? false),
+        splitN:         rule.splitN ?? 2,
+        isReimbursable: rule.isReimbursable ?? false,
       })
     } else if (open) {
       const firstId     = accounts[0]?.id != null ? String(accounts[0].id) : ''
@@ -129,8 +133,9 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
         description:  '',
         frequency:    'monthly',
         startDate:    format(new Date(), 'yyyy-MM-dd'),
-        isShared:     firstShared,
-        splitN:       firstShared ? (firstAcct!.participants ?? 2) : 2,
+        isShared:       firstShared,
+        splitN:         firstShared ? (firstAcct!.participants ?? 2) : 2,
+        isReimbursable: false,
       })
     }
   }, [open, rule, accounts, reset])
@@ -151,7 +156,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
   }
 
   const onSubmit = async (values: FormValues) => {
-    const abs = toCents(parseFloat(values.amount) || 0)
+    const abs = toCents(parseFloat(values.amount.replace(',', '.')) || 0)
     const amount = values.type === 'income' ? abs : -abs // transfer also stored negative
 
     const payload: Omit<RecurringRule, 'id' | 'createdAt'> = {
@@ -166,8 +171,9 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
       startDate:    values.startDate,
       nextDue:      values.startDate,
       active:       true,
-      isPersonal:   isTransfer ? false : !values.isShared,
-      splitN:       (!isTransfer && values.isShared) ? Math.max(2, Math.round(values.splitN ?? 2)) : null,
+      isPersonal:     isTransfer ? false : !values.isShared,
+      splitN:         (!isTransfer && values.isShared) ? Math.max(2, Math.round(values.splitN ?? 2)) : null,
+      isReimbursable: !isTransfer && values.isReimbursable,
     }
 
     if (isEdit && rule?.id != null) {
@@ -274,11 +280,13 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
               <Label htmlFor="rec-amount">Amount</Label>
               <Input
                 id="rec-amount"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
-                {...register('amount', { required: 'Required', min: { value: 0.01, message: 'Must be > 0' } })}
+                {...register('amount', {
+                  required: 'Required',
+                  validate: v => parseFloat(String(v).replace(',', '.')) >= 0.01 || 'Must be > 0',
+                })}
               />
               {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
             </div>
@@ -361,6 +369,22 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
                 </div>
               )}
             </div>
+          )}
+
+          {selectedType === 'expense' && (
+            <label
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border cursor-pointer hover:bg-accent/60 transition-colors"
+              onClick={e => { e.preventDefault(); setValue('isReimbursable', !isReimbursable) }}
+            >
+              <div>
+                <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('transactions.reimbursableDesc')}</p>
+              </div>
+              <div className="relative shrink-0">
+                <div className={`h-5 w-9 rounded-full transition-colors ${isReimbursable ? 'bg-amber-500' : 'bg-muted'}`} />
+                <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${isReimbursable ? 'left-5' : 'left-1'}`} />
+              </div>
+            </label>
           )}
 
           <DialogFooter>

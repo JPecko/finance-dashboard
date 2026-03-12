@@ -49,6 +49,7 @@ export async function applyRule(rule: RecurringRule, date?: string): Promise<voi
     recurringRuleId: rule.id,
     isPersonal:      rule.isPersonal ?? false,
     splitN:          rule.splitN ?? null,
+    isReimbursable:  rule.isReimbursable ?? false,
   })
   await recurringRepo.advance(rule.id!, rule.frequency, rule.nextDue)
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })

@@ -102,7 +102,7 @@ export default function DashboardPage() {
   const categoryData = (() => {
     const map: Record<string, number> = {}
     for (const tx of transactions) {
-      if (!isCashFlow(tx) || tx.amount >= 0) continue
+      if (!isCashFlow(tx) || tx.amount >= 0 || tx.isReimbursable) continue
       const participants = tx.isPersonal ? 1 : (accounts.find(a => a.id === tx.accountId)?.participants ?? 1)
       map[tx.category] = (map[tx.category] ?? 0) + Math.abs(tx.amount) / participants
     }

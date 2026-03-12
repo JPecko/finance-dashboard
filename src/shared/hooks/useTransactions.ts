@@ -62,8 +62,10 @@ export function useMonthSummary(year: number, month: number) {
   const expenses     = real.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)
   const coreExpenses = real.filter(t => t.amount < 0 && t.category !== 'investing' && t.category !== 'roundup').reduce((s, t) => s + t.amount, 0)
 
-  const divisorFor = (t: Transaction) =>
-    t.isPersonal ? 1 : (t.splitN ?? accounts.find(a => a.id === t.accountId)?.participants ?? 1)
+  const divisorFor = (t: Transaction) => {
+    if (t.isReimbursable) return Infinity
+    return t.isPersonal ? 1 : (t.splitN ?? accounts.find(a => a.id === t.accountId)?.participants ?? 1)
+  }
 
   const personalExpenses = real
     .filter(t => t.amount < 0)

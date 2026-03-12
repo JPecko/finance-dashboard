@@ -18,46 +18,49 @@ type RuleRow = {
   active: boolean
   is_personal: boolean
   split_n: number | null
+  is_reimbursable: boolean
   created_at: string
 }
 
 function toRule(row: RuleRow): RecurringRule {
   return {
-    id:           row.id,
-    accountId:    row.account_id,
-    toAccountId:  row.to_account_id ?? undefined,
-    name:         row.name,
-    amount:      row.amount,
-    type:        row.type as RecurringRule['type'],
-    category:    row.category,
-    description: row.description,
-    frequency:   row.frequency as RecurringRule['frequency'],
-    startDate:   row.start_date,
-    nextDue:     row.next_due,
-    endDate:     row.end_date ?? undefined,
-    active:      row.active,
-    isPersonal:  row.is_personal ?? false,
-    splitN:      row.split_n ?? null,
-    createdAt:   row.created_at,
+    id:              row.id,
+    accountId:       row.account_id,
+    toAccountId:     row.to_account_id ?? undefined,
+    name:            row.name,
+    amount:          row.amount,
+    type:            row.type as RecurringRule['type'],
+    category:        row.category,
+    description:     row.description,
+    frequency:       row.frequency as RecurringRule['frequency'],
+    startDate:       row.start_date,
+    nextDue:         row.next_due,
+    endDate:         row.end_date ?? undefined,
+    active:          row.active,
+    isPersonal:      row.is_personal ?? false,
+    splitN:          row.split_n ?? null,
+    isReimbursable:  row.is_reimbursable ?? false,
+    createdAt:       row.created_at,
   }
 }
 
 function toRow(rule: Partial<RecurringRule>): Record<string, unknown> {
   const row: Record<string, unknown> = {}
-  if (rule.accountId   !== undefined) row.account_id    = rule.accountId
-  if (rule.toAccountId !== undefined) row.to_account_id = rule.toAccountId ?? null
-  if (rule.name        !== undefined) row.name        = rule.name
-  if (rule.amount      !== undefined) row.amount      = rule.amount
-  if (rule.type        !== undefined) row.type        = rule.type
-  if (rule.category    !== undefined) row.category    = rule.category
-  if (rule.description !== undefined) row.description = rule.description
-  if (rule.frequency   !== undefined) row.frequency   = rule.frequency
-  if (rule.startDate   !== undefined) row.start_date  = rule.startDate
-  if (rule.nextDue     !== undefined) row.next_due    = rule.nextDue
-  if (rule.endDate     !== undefined) row.end_date    = rule.endDate
-  if (rule.active      !== undefined) row.active      = rule.active
-  if (rule.isPersonal  !== undefined) row.is_personal = rule.isPersonal
-  if (rule.splitN      !== undefined) row.split_n     = rule.splitN ?? null
+  if (rule.accountId       !== undefined) row.account_id      = rule.accountId
+  if (rule.toAccountId     !== undefined) row.to_account_id   = rule.toAccountId ?? null
+  if (rule.name            !== undefined) row.name            = rule.name
+  if (rule.amount          !== undefined) row.amount          = rule.amount
+  if (rule.type            !== undefined) row.type            = rule.type
+  if (rule.category        !== undefined) row.category        = rule.category
+  if (rule.description     !== undefined) row.description     = rule.description
+  if (rule.frequency       !== undefined) row.frequency       = rule.frequency
+  if (rule.startDate       !== undefined) row.start_date      = rule.startDate
+  if (rule.nextDue         !== undefined) row.next_due        = rule.nextDue
+  if (rule.endDate         !== undefined) row.end_date        = rule.endDate
+  if (rule.active          !== undefined) row.active          = rule.active
+  if (rule.isPersonal      !== undefined) row.is_personal     = rule.isPersonal
+  if (rule.splitN          !== undefined) row.split_n         = rule.splitN ?? null
+  if (rule.isReimbursable  !== undefined) row.is_reimbursable = rule.isReimbursable
   return row
 }
 

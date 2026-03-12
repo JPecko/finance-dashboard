@@ -97,7 +97,12 @@ export default function TransactionRow({
       <div className="absolute inset-0 bg-foreground/[0.04] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
       <span className="hidden md:block text-sm text-muted-foreground">{formatDate(tx.date)}</span>
-      <p className="hidden md:block text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
+      <div className="hidden md:flex items-center gap-1.5 min-w-0">
+        <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
+        {tx.isReimbursable && (
+          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
+        )}
+      </div>
       <div className="hidden md:block min-w-0">
         <div className={transfer ? 'text-sm text-muted-foreground' : 'text-sm text-muted-foreground truncate'}>
           {accountCell}
@@ -114,7 +119,12 @@ export default function TransactionRow({
       </div>
 
       <div className="md:hidden flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
+          {tx.isReimbursable && (
+            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
+          )}
+        </div>
         <div className="mt-1">
           <Badge
             variant="secondary"

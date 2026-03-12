@@ -36,8 +36,9 @@ export interface Transaction {
   description: string
   date: string          // ISO 8601 date string (YYYY-MM-DD)
   recurringRuleId?: number
-  isPersonal?: boolean  // if true, don't divide by participants (even in shared accounts)
-  splitN?: number | null  // override divisor: split expense/income by this many people
+  isPersonal?: boolean     // if true, don't divide by participants (even in shared accounts)
+  splitN?: number | null   // override divisor: split expense/income by this many people
+  isReimbursable?: boolean // if true, exclude entirely from personal stats (fronted for someone else)
   createdAt: string
 }
 
@@ -57,8 +58,9 @@ export interface RecurringRule {
   nextDue: string       // ISO 8601
   endDate?: string      // ISO 8601
   active: boolean
-  isPersonal?: boolean  // if true, generated transactions won't be split by participants
-  splitN?: number | null  // override divisor for generated transactions
+  isPersonal?: boolean     // if true, generated transactions won't be split by participants
+  splitN?: number | null   // override divisor for generated transactions
+  isReimbursable?: boolean // if true, generated transactions excluded from personal stats
   createdAt: string
 }
 

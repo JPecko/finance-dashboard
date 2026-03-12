@@ -183,6 +183,8 @@ export const en = {
     splitBy:  'Split by',
     people:   'people',
     myShare:  'my share',
+    reimbursable:     'Reimbursable',
+    reimbursableDesc: 'Paid on behalf of someone else — not counted in your personal expenses',
   },
 
   recurring: {

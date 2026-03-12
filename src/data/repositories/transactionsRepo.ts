@@ -14,6 +14,7 @@ type TransactionRow = {
   recurring_rule_id: number | null
   is_personal: boolean
   split_n: number | null
+  is_reimbursable: boolean
   created_at: string
 }
 
@@ -30,6 +31,7 @@ function toTransaction(row: TransactionRow): Transaction {
     recurringRuleId: row.recurring_rule_id ?? undefined,
     isPersonal:      row.is_personal ?? false,
     splitN:          row.split_n ?? null,
+    isReimbursable:  row.is_reimbursable ?? false,
     createdAt:       row.created_at,
   }
 }
@@ -46,6 +48,7 @@ function toRow(tx: Omit<Transaction, 'id' | 'createdAt'>): Record<string, unknow
     recurring_rule_id: tx.recurringRuleId ?? null,
     is_personal:       tx.isPersonal ?? false,
     split_n:           tx.splitN ?? null,
+    is_reimbursable:   tx.isReimbursable ?? false,
   }
 }
 
