@@ -6,6 +6,7 @@ import { transactionsRepo } from '@/data/repositories/transactionsRepo'
 import { queryClient } from '@/app/queryClient'
 import { queryKeys } from '@/data/queryKeys'
 import { useAccounts } from '@/shared/hooks/useAccounts'
+import { useSharedExpensesByMonth } from '@/shared/hooks/useSharedExpenses'
 import type { Transaction, Account } from '@/domain/types'
 
 // ─── Queries ────────────────────────────────────────────────────────────────
@@ -54,8 +55,9 @@ export function isCashFlow(t: Transaction): boolean {
 
 /** Computes monthly income/expense summary, dividing shared-account values by participants. */
 export function useMonthSummary(year: number, month: number) {
-  const { data: txs      = [] } = useTransactionsByMonth(year, month)
-  const { data: accounts = [] } = useAccounts()
+  const { data: txs            = [] } = useTransactionsByMonth(year, month)
+  const { data: accounts       = [] } = useAccounts()
+  const { data: sharedExpenses = [] } = useSharedExpensesByMonth(year, month)
 
   const real         = txs.filter(isCashFlow)
   const income       = real.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
@@ -67,9 +69,31 @@ export function useMonthSummary(year: number, month: number) {
     return t.isPersonal ? 1 : (t.splitN ?? accounts.find(a => a.id === t.accountId)?.participants ?? 1)
   }
 
+  // payer='me' SEs: map transactionId → SE for personal cost override
+  const txSeMap: Record<number, typeof sharedExpenses[0]> = {}
+  for (const se of sharedExpenses) {
+    if (se.payer === 'me' && se.transactionId != null) txSeMap[se.transactionId] = se
+  }
+
+  // Personal amount for an expense transaction:
+  // if it has a linked SE (payer='me'), use se.myShare (negative) instead of tx.amount/divisor
+  const personalAmountOf = (t: Transaction): number => {
+    if (t.id != null && txSeMap[t.id] != null) return -txSeMap[t.id].myShare
+    return t.amount / divisorFor(t)
+  }
+
+  // Shared expenses where someone else paid — add to personal expenses (consumption without cashflow)
+  const sharedPersonal = sharedExpenses
+    .filter(se => se.payer === 'other' && se.status !== 'ignored')
+    .reduce((s, se) => s + se.myShare, 0)
+
+  const sharedPending = sharedExpenses
+    .filter(se => se.payer === 'other' && se.status === 'open')
+    .reduce((s, se) => s + se.myShare, 0)
+
   const personalExpenses = real
     .filter(t => t.amount < 0)
-    .reduce((s, t) => s + t.amount / divisorFor(t), 0)
+    .reduce((s, t) => s + personalAmountOf(t), 0) - sharedPersonal
 
   const personalIncome = real
     .filter(t => t.amount > 0)
@@ -77,11 +101,11 @@ export function useMonthSummary(year: number, month: number) {
 
   const personalInvesting = real
     .filter(t => t.amount < 0 && t.category === 'investing')
-    .reduce((s, t) => s + t.amount / divisorFor(t), 0)
+    .reduce((s, t) => s + personalAmountOf(t), 0)
 
   const personalRoundup = real
     .filter(t => t.amount < 0 && t.category === 'roundup')
-    .reduce((s, t) => s + t.amount / divisorFor(t), 0)
+    .reduce((s, t) => s + personalAmountOf(t), 0)
 
   const marketGain = txs
     .filter(t => t.type === 'revaluation')
@@ -91,7 +115,7 @@ export function useMonthSummary(year: number, month: number) {
     income, expenses, coreExpenses, balance: income + expenses,
     personalIncome, personalExpenses, personalBalance: personalIncome + personalExpenses,
     personalInvesting, personalRoundup,
-    marketGain,
+    marketGain, sharedPending,
   }
 }
 
@@ -340,11 +364,12 @@ export function useInvestmentAccountHistory(account: Account, months = 12) {
 // Transactions affect account balances, so both caches are invalidated.
 // Prefix-based invalidation on ['transactions'] covers byMonth + netFlow.
 
-export async function addTransaction(data: Omit<Transaction, 'id' | 'createdAt'>) {
-  await transactionsRepo.add(data)
+export async function addTransaction(data: Omit<Transaction, 'id' | 'createdAt'>): Promise<number | undefined> {
+  const id = await transactionsRepo.add(data)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
   queryClient.invalidateQueries({ queryKey: ['benefits'] })
+  return id
 }
 
 export async function updateTransaction(id: number, data: Partial<Transaction>) {

@@ -1,6 +1,30 @@
 import type { en } from './en'
 
 export const pt: typeof en = {
+  sharedExpenses: {
+    title:          'Splitwise',
+    typeLabel:      'Splitwise',
+    payerMe:        'Eu paguei',
+    payerOther:     'Outra pessoa pagou',
+    payerLabel:     'Pago por',
+    owesYou:        'Quem te deve?',
+    totalAmount:    'Total da despesa',
+    myShare:        'A minha quota',
+    statusOpen:     'Pendente',
+    statusSettled:  'Liquidado',
+    markSettled:    'Marcar como liquidado',
+    markOpen:       'Reabrir',
+    filterLabel:    'Splitwise',
+    filterBank:     'Banco',
+    filterAll:      'Todos',
+    pending:        'Pendente: {{amount}}',
+    splitPending:   'Split · {{amount}} pendente',
+    splitSettled:   'Split · {{amount}} liquidado',
+    settleUp:       'Acertar contas',
+    settleUpToggle: 'Marcar como acerto Splitwise',
+    settleUpDesc:   'Marca todas as entradas Splitwise abertas como liquidadas ao guardar',
+  },
+
   nav: {
     dashboard:    'Dashboard',
     accounts:     'Contas',

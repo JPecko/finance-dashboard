@@ -1,4 +1,4 @@
-import { Pencil, Trash2, ArrowRight, Wallet, Banknote, PiggyBank, BarChart2, HandCoins, CreditCard } from 'lucide-react'
+import { Pencil, Trash2, ArrowRight, Wallet, Banknote, PiggyBank, BarChart2, HandCoins, CreditCard, RotateCcw } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import {
@@ -9,7 +9,8 @@ import { BANK_OPTIONS } from '@/shared/config/banks'
 import { formatMoney } from '@/domain/money'
 import { formatDate } from '@/shared/utils/format'
 import { getCategoryById } from '@/domain/categories'
-import type { Transaction, Account } from '@/domain/types'
+import { useT } from '@/shared/i18n'
+import type { Transaction, Account, SharedExpense } from '@/domain/types'
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   checking:   Banknote,
@@ -45,6 +46,8 @@ interface TransactionRowProps {
   runningBalances: Record<number, number>
   onEdit: (tx: Transaction) => void
   onDelete: (id: number) => Promise<void>
+  linkedSE?:   SharedExpense
+  onReopenSE?: (id: number) => Promise<void>
 }
 
 function isInternalTransfer(tx: Transaction): boolean {
@@ -82,7 +85,10 @@ export default function TransactionRow({
   runningBalances,
   onEdit,
   onDelete,
+  linkedSE,
+  onReopenSE,
 }: TransactionRowProps) {
+  const t   = useT()
   const cat = getCategoryById(tx.category)
   const transfer = isInternalTransfer(tx)
   const txBalance = tx.id != null ? runningBalances[tx.id] : undefined
@@ -101,6 +107,17 @@ export default function TransactionRow({
         <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
         {tx.isReimbursable && (
           <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
+        )}
+        {linkedSE && (
+          <Badge
+            variant="secondary"
+            className={`text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer ${linkedSE.status === 'open' ? 'border-blue-500/50 text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
+            onClick={() => onEdit(tx)}
+          >
+            {linkedSE.status === 'open'
+              ? t('sharedExpenses.splitPending', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })
+              : t('sharedExpenses.splitSettled', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })}
+          </Badge>
         )}
       </div>
       <div className="hidden md:block min-w-0">
@@ -125,7 +142,7 @@ export default function TransactionRow({
             <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
           )}
         </div>
-        <div className="mt-1">
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           <Badge
             variant="secondary"
             className="text-xs px-1.5 py-0 h-5 shrink-0"
@@ -133,6 +150,17 @@ export default function TransactionRow({
           >
             {cat.label}
           </Badge>
+          {linkedSE && (
+            <Badge
+              variant="secondary"
+              className={`text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer ${linkedSE.status === 'open' ? 'border-blue-500/50 text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
+              onClick={() => onEdit(tx)}
+            >
+              {linkedSE.status === 'open'
+                ? t('sharedExpenses.splitPending', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })
+                : t('sharedExpenses.splitSettled', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })}
+            </Badge>
+          )}
         </div>
         <div className="text-sm text-muted-foreground mt-1">{formatDate(tx.date)}</div>
         <div className={transfer ? 'text-sm text-muted-foreground mt-0.5' : 'text-sm text-muted-foreground mt-0.5 truncate'}>
@@ -166,6 +194,11 @@ export default function TransactionRow({
           <DropdownMenuItem onClick={() => onEdit(tx)}>
             <Pencil className="h-4 w-4 mr-2" /> Edit
           </DropdownMenuItem>
+          {linkedSE && onReopenSE && linkedSE.status === 'settled' && (
+            <DropdownMenuItem onClick={() => linkedSE.id != null && onReopenSE(linkedSE.id)}>
+              <RotateCcw className="h-4 w-4 mr-2" /> {t('sharedExpenses.markOpen')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             disabled={tx.id == null}

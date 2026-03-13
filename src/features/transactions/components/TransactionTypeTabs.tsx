@@ -1,15 +1,18 @@
 import { cn } from '@/lib/utils'
 import type { TransactionType } from '@/domain/types'
 
-const TABS: { value: TransactionType; label: string; activeClass: string }[] = [
-  { value: 'expense',  label: 'Expense',  activeClass: 'bg-rose-600 text-white' },
-  { value: 'income',   label: 'Income',   activeClass: 'bg-emerald-600 text-white' },
-  { value: 'transfer', label: 'Transfer', activeClass: 'bg-blue-600 text-white' },
+type TabValue = TransactionType | 'splitwise'
+
+const TABS: { value: TabValue; label: string; activeClass: string }[] = [
+  { value: 'expense',   label: 'Expense',    activeClass: 'bg-rose-600 text-white' },
+  { value: 'income',    label: 'Income',     activeClass: 'bg-emerald-600 text-white' },
+  { value: 'transfer',  label: 'Transfer',   activeClass: 'bg-blue-600 text-white' },
+  { value: 'splitwise', label: 'Splitwise',  activeClass: 'bg-violet-600 text-white' },
 ]
 
 interface Props {
-  value:    TransactionType
-  onChange: (type: TransactionType) => void
+  value:    TabValue
+  onChange: (type: TabValue) => void
 }
 
 export default function TransactionTypeTabs({ value, onChange }: Props) {

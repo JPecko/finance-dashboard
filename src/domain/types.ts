@@ -64,6 +64,26 @@ export interface RecurringRule {
   createdAt: string
 }
 
+export type SharedExpensePayer  = 'me' | 'other'
+export type SharedExpenseStatus = 'open' | 'settled' | 'ignored'
+
+export interface SharedExpense {
+  id?:            number
+  description:    string
+  date:           string      // YYYY-MM-DD
+  category:       string
+  totalAmount:    number      // cents, positive
+  myShare:        number      // cents, positive
+  payer:          SharedExpensePayer
+  payerLabel?:    string      // payer='other' → quem pagou; payer='me' → quem te deve
+  status:         SharedExpenseStatus
+  notes?:         string
+  source:         'manual' | 'csv' | 'api'
+  externalId?:    string
+  transactionId?: number      // payer='me' → FK para a transação bancária correspondente
+  createdAt:      string
+}
+
 export interface AppSettings {
   id?: number
   currency: string      // default 'EUR'

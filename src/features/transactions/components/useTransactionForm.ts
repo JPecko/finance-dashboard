@@ -107,10 +107,11 @@ interface UseTransactionFormProps {
   transaction?:      Transaction
   defaultType?:      TransactionType
   defaultAccountId?: string
+  onAfterSubmit?:    (id?: number) => Promise<void>
 }
 
 export function useTransactionForm({
-  open, onClose, transaction, defaultType = 'expense', defaultAccountId,
+  open, onClose, transaction, defaultType = 'expense', defaultAccountId, onAfterSubmit,
 }: UseTransactionFormProps) {
   const isEdit   = !!transaction
   const { data: accounts = [] } = useSortedAccounts()
@@ -188,8 +189,10 @@ export function useTransactionForm({
     const payload = buildPayload(values)
     if (isEdit && transaction?.id != null) {
       await updateTransaction(transaction.id, payload)
+      if (onAfterSubmit) await onAfterSubmit(undefined)
     } else {
-      await addTransaction(payload)
+      const id = await addTransaction(payload)
+      if (onAfterSubmit) await onAfterSubmit(id)
     }
     onClose()
   })
