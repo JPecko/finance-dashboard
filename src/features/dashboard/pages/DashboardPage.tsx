@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { useSortedAccounts, useNetWorth } from '@/shared/hooks/useAccounts'
 import { useMonthSummary, useTransactionsByMonth, useMonthlyNetFlow, useMonthlyBenefits, useYearBenefits, isCashFlow } from '@/shared/hooks/useTransactions'
+import { useSharedExpensesByMonth } from '@/shared/hooks/useSharedExpenses'
 import { formatMoney } from '@/domain/money'
 import { getCategoryById } from '@/domain/categories'
 import { formatDate } from '@/shared/utils/format'
@@ -73,9 +74,10 @@ export default function DashboardPage() {
   const summary                    = useMonthSummary(YEAR, MONTH)
   const { data: transactions = [], isLoading: txLoading  } = useTransactionsByMonth(YEAR, MONTH)
   const { data: accounts     = [], isLoading: accLoading } = useSortedAccounts()
-  const { data: barData       = [] } = useMonthlyNetFlow(YEAR, MONTH)
-  const { data: benefitsData  = [] } = useMonthlyBenefits(YEAR, MONTH)
-  const { data: yearBenefits      } = useYearBenefits(YEAR)
+  const { data: barData         = [] } = useMonthlyNetFlow(YEAR, MONTH)
+  const { data: benefitsData    = [] } = useMonthlyBenefits(YEAR, MONTH)
+  const { data: yearBenefits        } = useYearBenefits(YEAR)
+  const { data: sharedExpenses  = [] } = useSharedExpensesByMonth(YEAR, MONTH)
 
   // Cashback (virtual — computed from expenses × cashbackPct)
   const cashbackMonth = transactions
@@ -100,11 +102,27 @@ export default function DashboardPage() {
 
   // Spending by category — personal share (÷ participants, same logic as useMonthSummary)
   const categoryData = (() => {
+    // payer='me' SEs: transactionId → SE (myShare overrides tx personal amount)
+    const txSeMap: Record<number, typeof sharedExpenses[0]> = {}
+    for (const se of sharedExpenses) {
+      if (se.payer === 'me' && se.transactionId != null) txSeMap[se.transactionId] = se
+    }
+
     const map: Record<string, number> = {}
     for (const tx of transactions) {
-      if (!isCashFlow(tx) || tx.amount >= 0) continue
-      const participants = tx.isPersonal ? 1 : (accounts.find(a => a.id === tx.accountId)?.participants ?? 1)
-      map[tx.category] = (map[tx.category] ?? 0) + Math.abs(tx.amount) / participants
+      if (!isCashFlow(tx) || tx.amount >= 0 || tx.isReimbursable) continue
+      let amount: number
+      if (tx.id != null && txSeMap[tx.id] != null) {
+        amount = txSeMap[tx.id].myShare
+      } else {
+        const participants = tx.isPersonal ? 1 : (tx.splitN ?? accounts.find(a => a.id === tx.accountId)?.participants ?? 1)
+        amount = Math.abs(tx.amount) / participants
+      }
+      map[tx.category] = (map[tx.category] ?? 0) + amount
+    }
+    // Add shared expenses where someone else paid (consumption without cashflow)
+    for (const se of sharedExpenses.filter(e => e.payer === 'other' && e.status !== 'ignored')) {
+      map[se.category] = (map[se.category] ?? 0) + se.myShare
     }
     return Object.entries(map)
       .map(([id, value]) => { const cat = getCategoryById(id); return { id, name: cat.label, value, color: cat.color } })
@@ -210,6 +228,11 @@ export default function DashboardPage() {
                 {savingsRate >= 0
                   ? t('dashboard.savedPct', { rate: String(savingsRate) })
                   : t('dashboard.overspentPct', { rate: String(Math.abs(savingsRate)) })}
+              </p>
+            )}
+            {summary.sharedPending > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                {t('sharedExpenses.pending', { amount: formatMoney(summary.sharedPending) })}
               </p>
             )}
             {(() => {

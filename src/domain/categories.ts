@@ -1,6 +1,7 @@
 import {
   Home,
-  ShoppingCart,
+  ShoppingBag,
+  ShoppingBasket,
   Car,
   Heart,
   Gamepad2,
@@ -32,10 +33,11 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   { id: 'housing',       label: 'Housing',          icon: Home,           color: '#6366f1', type: 'expense' },
   { id: 'food',          label: 'Food & Drinks',    icon: Coffee,         color: '#f59e0b', type: 'expense' },
+  { id: 'groceries',     label: 'Groceries',        icon: ShoppingBasket, color: '#65a30d', type: 'expense' },
   { id: 'transport',     label: 'Transport',        icon: Car,            color: '#3b82f6', type: 'expense' },
   { id: 'health',        label: 'Health',           icon: Heart,          color: '#ef4444', type: 'expense' },
   { id: 'entertainment', label: 'Entertainment',    icon: Gamepad2,       color: '#f97316', type: 'expense' },
-  { id: 'shopping',      label: 'Shopping',         icon: ShoppingCart,   color: '#ec4899', type: 'expense' },
+  { id: 'shopping',      label: 'Shopping',         icon: ShoppingBag,    color: '#ec4899', type: 'expense' },
   { id: 'utilities',     label: 'Utilities',        icon: Zap,            color: '#eab308', type: 'expense' },
   { id: 'education',     label: 'Education',        icon: GraduationCap,  color: '#06b6d4', type: 'expense' },
   { id: 'travel',        label: 'Travel',           icon: Plane,          color: '#14b8a6', type: 'expense' },

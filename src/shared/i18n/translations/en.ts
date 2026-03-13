@@ -1,4 +1,28 @@
 export const en = {
+  sharedExpenses: {
+    title:              'Splitwise',
+    typeLabel:          'Splitwise',
+    payerMe:            'I paid',
+    payerOther:         'Someone else paid',
+    payerLabel:         'Paid by',
+    owesYou:            'Who owes you?',
+    totalAmount:        'Total amount',
+    myShare:            'My share',
+    statusOpen:         'Pending',
+    statusSettled:      'Settled',
+    markSettled:        'Mark as settled',
+    markOpen:           'Reopen',
+    filterLabel:        'Splitwise',
+    filterBank:         'Bank',
+    filterAll:          'All',
+    pending:            'Pending: {{amount}}',
+    splitPending:       'Split · {{amount}} pending',
+    splitSettled:       'Split · {{amount}} settled',
+    settleUp:           'Settle up',
+    settleUpToggle:     'Mark as Splitwise settle-up',
+    settleUpDesc:       'Marks all open Splitwise entries as settled after saving',
+  },
+
   nav: {
     dashboard:    'Dashboard',
     accounts:     'Accounts',
@@ -183,6 +207,8 @@ export const en = {
     splitBy:  'Split by',
     people:   'people',
     myShare:  'my share',
+    reimbursable:     'Reimbursable',
+    reimbursableDesc: 'Paid on behalf of someone else — not counted in your personal expenses',
   },
 
   recurring: {

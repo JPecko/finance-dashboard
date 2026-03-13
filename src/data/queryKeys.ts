@@ -17,4 +17,9 @@ export const queryKeys = {
   rules: {
     all: () => ['rules'] as const,
   },
+  sharedExpenses: {
+    all:     ()                            => ['sharedExpenses']                         as const,
+    byMonth: (year: number, month: number) => ['sharedExpenses', 'byMonth', year, month] as const,
+    open:    ()                            => ['sharedExpenses', 'open']                 as const,
+  },
 } as const

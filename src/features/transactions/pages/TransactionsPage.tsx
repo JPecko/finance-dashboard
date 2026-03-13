@@ -8,6 +8,7 @@ import PageLoader from "@/shared/components/PageLoader";
 import BankLogo from "@/shared/components/BankLogo";
 import TransactionFormModal from "../components/TransactionFormModal";
 import TransactionRow, { TRANSACTIONS_GRID_COLS } from "../components/TransactionRow";
+import SharedExpenseRow from "../components/SharedExpenseRow";
 import { useTransactionsPageModel } from "./useTransactionsPageModel";
 import { useT } from "@/shared/i18n";
 import { BANK_OPTIONS } from "@/shared/config/banks";
@@ -18,8 +19,10 @@ export default function TransactionsPage() {
   const {
     currentDate,
     modalOpen,
-    editing,
-    transactions,
+    editingTx,
+    editingSE,
+    listItems,
+    txSeMap,
     isLoading,
     accounts,
     accountsById,
@@ -27,18 +30,31 @@ export default function TransactionsPage() {
     categoriesInMonth,
     filterAccountId,
     filterCategory,
+    filterSource,
     setFilterAccountId,
     setFilterCategory,
+    setFilterSource,
     prevMonth,
     nextMonth,
     openCreateModal,
     handleEdit,
+    handleEditSE,
     handleClose,
     handleDelete,
+    handleDeleteSE,
+    handleReopen,
   } = useTransactionsPageModel();
 
-  const activeFilterCount = (filterAccountId !== null ? 1 : 0) + (filterCategory !== null ? 1 : 0)
-  const clearFilters = () => { setFilterAccountId(null); setFilterCategory(null) }
+  const activeFilterCount =
+    (filterAccountId !== null ? 1 : 0) +
+    (filterCategory  !== null ? 1 : 0) +
+    (filterSource    !== 'all' ? 1 : 0)
+
+  const clearFilters = () => {
+    setFilterAccountId(null)
+    setFilterCategory(null)
+    setFilterSource('all')
+  }
 
   return (
     <div className="p-6">
@@ -48,10 +64,12 @@ export default function TransactionsPage() {
           <h1 className="text-2xl font-bold">{t('transactions.title')}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{format(currentDate, "MMMM yyyy")}</p>
         </div>
-        <Button onClick={openCreateModal}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t('transactions.addTransaction')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={openCreateModal}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t('transactions.addTransaction')}
+          </Button>
+        </div>
       </div>
 
       {/* Month navigation + Filter */}
@@ -108,6 +126,33 @@ export default function TransactionsPage() {
 
             <Separator />
 
+            {/* Source section */}
+            <div className="pt-3 pb-3">
+              <p className="pb-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Source
+              </p>
+              <div className="flex gap-2 px-4">
+                {(['all', 'bank', 'shared'] as const).map(src => {
+                  const label = src === 'all'    ? t('sharedExpenses.filterAll')
+                              : src === 'bank'   ? t('sharedExpenses.filterBank')
+                              : t('sharedExpenses.filterLabel')
+                  return (
+                    <button
+                      key={src}
+                      onClick={() => setFilterSource(src)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors text-center ${
+                        filterSource === src ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Account section */}
             <div className="pt-3 pb-1">
               <p className="pb-1 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -157,7 +202,6 @@ export default function TransactionsPage() {
                     )
                   })}
                 </div>
-                {/* Bottom fade — hints at more items below */}
                 <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-popover to-transparent" />
               </div>
             </div>
@@ -208,7 +252,6 @@ export default function TransactionsPage() {
                     <p className="px-4 py-3 text-sm text-muted-foreground">{t('common.noData')}</p>
                   )}
                 </div>
-                {/* Bottom fade */}
                 <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-popover to-transparent" />
               </div>
             </div>
@@ -219,7 +262,7 @@ export default function TransactionsPage() {
       {/* Transaction list */}
       {isLoading ? (
         <PageLoader message={t('transactions.loading')} />
-      ) : transactions.length === 0 ? (
+      ) : listItems.length === 0 ? (
         <EmptyState
           icon={ArrowLeftRight}
           title={t('transactions.noTransactions')}
@@ -245,16 +288,28 @@ export default function TransactionsPage() {
           </div>
 
           <div className="divide-y divide-border">
-            {transactions.map((tx) => (
-              <TransactionRow
-                key={tx.id}
-                tx={tx}
-                accountsById={accountsById}
-                runningBalances={runningBalances}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
+            {listItems.map(item =>
+              item.kind === 'tx' ? (
+                <TransactionRow
+                  key={`tx-${item.data.id}`}
+                  tx={item.data}
+                  accountsById={accountsById}
+                  runningBalances={runningBalances}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  linkedSE={item.data.id != null ? txSeMap[item.data.id] : undefined}
+                  onReopenSE={handleReopen}
+                />
+              ) : (
+                <SharedExpenseRow
+                  key={`se-${item.data.id}`}
+                  se={item.data}
+                  onEdit={handleEditSE}
+                  onDelete={handleDeleteSE}
+                  onReopen={handleReopen}
+                />
+              )
+            )}
           </div>
         </div>
       )}
@@ -262,8 +317,10 @@ export default function TransactionsPage() {
       <TransactionFormModal
         open={modalOpen}
         onClose={handleClose}
-        transaction={editing}
-        defaultAccountId={!editing && filterAccountId != null ? String(filterAccountId) : undefined}
+        transaction={editingTx}
+        expense={editingSE}
+        linkedSE={editingTx?.id != null ? txSeMap[editingTx.id] : undefined}
+        defaultAccountId={!editingTx && !editingSE && filterAccountId != null ? String(filterAccountId) : undefined}
       />
     </div>
   );

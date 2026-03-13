@@ -10,19 +10,20 @@ import type { Transaction, TransactionType } from '@/domain/types'
 export const EXTERNAL = '__external__'
 
 export interface TransactionFormValues {
-  type:        TransactionType
-  fromId:      string
-  toId:        string
-  amount:      string
-  category:    string
-  description: string
-  date:        string
-  isShared:    boolean  // true = split enabled (default), false = full expense mine
-  splitN:      number   // how many people to split between (only used when isShared = true)
+  type:           TransactionType
+  fromId:         string
+  toId:           string
+  amount:         string
+  category:       string
+  description:    string
+  date:           string
+  isShared:       boolean  // true = split enabled (default), false = full expense mine
+  splitN:         number   // how many people to split between (only used when isShared = true)
+  isReimbursable: boolean  // true = exclude entirely from personal stats
 }
 
 function buildPayload(values: TransactionFormValues): Omit<Transaction, 'id' | 'createdAt'> {
-  const absAmount  = toCents(parseFloat(values.amount) || 0)
+  const absAmount  = toCents(parseFloat(values.amount.replace(',', '.')) || 0)
   const fromIsReal = values.fromId !== EXTERNAL
   const toIsReal   = values.toId   !== EXTERNAL
   const base = {
@@ -30,8 +31,9 @@ function buildPayload(values: TransactionFormValues): Omit<Transaction, 'id' | '
     category:    values.category,
     description: values.description.trim(),
     date:        values.date,
-    isPersonal:  !values.isShared,
-    splitN:      values.isShared ? Math.max(2, Math.round(values.splitN ?? 2)) : null,
+    isPersonal:     !values.isShared,
+    splitN:         values.isShared ? Math.max(2, Math.round(values.splitN ?? 2)) : null,
+    isReimbursable: values.isReimbursable,
   }
 
   if (values.type === 'transfer') {
@@ -65,8 +67,9 @@ function buildDefaultValues(
     category:    defaultType === 'transfer' ? 'transfer' : 'other',
     description: '',
     date:        isoToday(),
-    isShared:    defaultType === 'income' ? false : isSharedAccount,
-    splitN:      defaultSplitN,
+    isShared:       defaultType === 'income' ? false : isSharedAccount,
+    splitN:         defaultSplitN,
+    isReimbursable: false,
   }
 }
 
@@ -93,7 +96,8 @@ function buildEditValues(transaction: Transaction, account: { participants?: num
     description: transaction.description,
     date:        transaction.date,
     isShared,
-    splitN:      transaction.splitN ?? (isShared ? accountParticipants : 2),
+    splitN:         transaction.splitN ?? (isShared ? accountParticipants : 2),
+    isReimbursable: transaction.isReimbursable ?? false,
   }
 }
 
@@ -103,10 +107,11 @@ interface UseTransactionFormProps {
   transaction?:      Transaction
   defaultType?:      TransactionType
   defaultAccountId?: string
+  onAfterSubmit?:    (id?: number) => Promise<void>
 }
 
 export function useTransactionForm({
-  open, onClose, transaction, defaultType = 'expense', defaultAccountId,
+  open, onClose, transaction, defaultType = 'expense', defaultAccountId, onAfterSubmit,
 }: UseTransactionFormProps) {
   const isEdit   = !!transaction
   const { data: accounts = [] } = useSortedAccounts()
@@ -128,7 +133,8 @@ export function useTransactionForm({
   const selectedType = watch('type')
   const selectedFrom = watch('fromId')
   const selectedTo   = watch('toId')
-  const splitN       = watch('splitN')
+  const splitN           = watch('splitN')
+  const isReimbursable   = watch('isReimbursable')
 
   const isTransfer = selectedType === 'transfer'
   const isValid    = !isTransfer || selectedFrom !== EXTERNAL || selectedTo !== EXTERNAL
@@ -183,8 +189,10 @@ export function useTransactionForm({
     const payload = buildPayload(values)
     if (isEdit && transaction?.id != null) {
       await updateTransaction(transaction.id, payload)
+      if (onAfterSubmit) await onAfterSubmit(undefined)
     } else {
-      await addTransaction(payload)
+      const id = await addTransaction(payload)
+      if (onAfterSubmit) await onAfterSubmit(id)
     }
     onClose()
   })
@@ -201,6 +209,7 @@ export function useTransactionForm({
     selectedFrom,
     selectedTo,
     splitN,
+    isReimbursable,
     handleTypeChange,
     handleFromChange,
     onSubmit,
