@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Pencil, Trash2, UserPlus, UserMinus,
@@ -44,18 +44,13 @@ function MemberDialog({ open, onClose, groupId, member }: AddMemberDialogProps) 
   const [resolvedUid, setResolvedUid] = useState<string | undefined>(member?.userId)
   const [looking,     setLooking]     = useState(false)
   const [busy,        setBusy]        = useState(false)
-  const prevOpen = useRef(false)
-
-  // Reset on open
-  if (open && !prevOpen.current) {
-    prevOpen.current = true
-    setTimeout(() => {
-      setName(member?.name ?? '')
-      setEmail(member?.email ?? '')
-      setResolvedUid(member?.userId)
-    }, 0)
-  }
-  if (!open && prevOpen.current) prevOpen.current = false
+  useEffect(() => {
+    if (!open) return
+    setName(member?.name ?? '')
+    setEmail(member?.email ?? '')
+    setResolvedUid(member?.userId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   async function handleEmailBlur() {
     const trimmed = email.trim()
@@ -421,7 +416,7 @@ export default function GroupDetailPage() {
                         className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                         style={{ backgroundColor: cat.color + '20' }}
                       >
-                        <span className="text-sm">{cat.icon}</span>
+                        <cat.icon className="h-4 w-4" style={{ color: cat.color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">

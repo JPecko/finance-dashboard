@@ -57,6 +57,14 @@ export function useGroupBalances(groupId: number) {
   return { balances, debts }
 }
 
+export function useMyGroupExpenses(year: number, month: number) {
+  return useQuery({
+    queryKey: ['myGroupExpenses', year, month],
+    queryFn:  () => groupsRepo.getMyGroupExpensesForMonth(year, month),
+    staleTime: 30_000,
+  })
+}
+
 // ---- Group mutations -------------------------------------------
 
 function invalidateGroup(groupId?: number) {
@@ -69,6 +77,9 @@ function invalidateGroup(groupId?: number) {
 function invalidateGroupData(groupId: number) {
   void queryClient.invalidateQueries({ queryKey: queryKeys.groups.members(groupId) })
   void queryClient.invalidateQueries({ queryKey: queryKeys.groups.entries(groupId) })
+  void queryClient.invalidateQueries({ queryKey: ['txLinkedGroups'] })
+  void queryClient.invalidateQueries({ queryKey: ['seLinkedGroups'] })
+  void queryClient.invalidateQueries({ queryKey: ['myGroupExpenses'] })
 }
 
 export async function createGroup(group: Omit<Group, 'id' | 'createdAt'>): Promise<number> {

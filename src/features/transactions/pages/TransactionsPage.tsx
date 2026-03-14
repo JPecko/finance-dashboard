@@ -9,6 +9,7 @@ import BankLogo from "@/shared/components/BankLogo";
 import TransactionFormModal from "../components/TransactionFormModal";
 import TransactionRow, { TRANSACTIONS_GRID_COLS } from "../components/TransactionRow";
 import SharedExpenseRow from "../components/SharedExpenseRow";
+import GroupExpenseRow from "../components/GroupExpenseRow";
 import { useTransactionsPageModel } from "./useTransactionsPageModel";
 import { useT } from "@/shared/i18n";
 import { BANK_OPTIONS } from "@/shared/config/banks";
@@ -23,6 +24,8 @@ export default function TransactionsPage() {
     editingSE,
     listItems,
     txSeMap,
+    txGroupMap,
+    seGroupMap,
     isLoading,
     accounts,
     accountsById,
@@ -298,15 +301,22 @@ export default function TransactionsPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   linkedSE={item.data.id != null ? txSeMap[item.data.id] : undefined}
+                  linkedGroup={item.data.id != null ? txGroupMap[item.data.id] : undefined}
                   onReopenSE={handleReopen}
                 />
-              ) : (
+              ) : item.kind === 'se' ? (
                 <SharedExpenseRow
                   key={`se-${item.data.id}`}
                   se={item.data}
                   onEdit={handleEditSE}
                   onDelete={handleDeleteSE}
                   onReopen={handleReopen}
+                  linkedGroup={item.data.id != null ? seGroupMap[item.data.id] : undefined}
+                />
+              ) : (
+                <GroupExpenseRow
+                  key={`ge-${item.data.entryId}`}
+                  item={item.data}
                 />
               )
             )}
@@ -318,8 +328,7 @@ export default function TransactionsPage() {
         open={modalOpen}
         onClose={handleClose}
         transaction={editingTx}
-        expense={editingSE}
-        linkedSE={editingTx?.id != null ? txSeMap[editingTx.id] : undefined}
+        sharedExpense={editingSE}
         defaultAccountId={!editingTx && !editingSE && filterAccountId != null ? String(filterAccountId) : undefined}
       />
     </div>

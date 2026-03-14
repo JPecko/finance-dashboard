@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
 import { getYear, getMonth } from 'date-fns'
+import { useQuery } from '@tanstack/react-query'
 import { useTransactionsByMonth, useRunningBalances, removeTransaction } from '@/shared/hooks/useTransactions'
 import { useSharedExpensesByMonth, removeSharedExpense, updateSharedExpense } from '@/shared/hooks/useSharedExpenses'
 import { useSortedAccounts } from '@/shared/hooks/useAccounts'
 import { useTransactionsFilterStore } from '@/shared/store/transactionsFilterStore'
-import type { Transaction, Account, SharedExpense } from '@/domain/types'
+import { useMyGroupExpenses } from '@/shared/hooks/useGroups'
+import { groupsRepo } from '@/data/repositories/groupsRepo'
+import type { Transaction, Account, SharedExpense, GroupExpenseItem } from '@/domain/types'
 
 export type ListItem =
-  | { kind: 'tx'; data: Transaction }
-  | { kind: 'se'; data: SharedExpense }
+  | { kind: 'tx';            data: Transaction }
+  | { kind: 'se';            data: SharedExpense }
+  | { kind: 'group-expense'; data: GroupExpenseItem }
 
 export function useTransactionsPageModel() {
   const [year, setYear] = useState(() => getYear(new Date()))
@@ -20,10 +24,32 @@ export function useTransactionsPageModel() {
   const { filterAccountId, filterCategory, filterSource, setFilterAccountId, setFilterCategory, setFilterSource } =
     useTransactionsFilterStore()
 
-  const { data: transactions   = [], isLoading }  = useTransactionsByMonth(year, month)
-  const { data: sharedExpenses = [] }              = useSharedExpensesByMonth(year, month)
-  const { data: accounts       = [] }              = useSortedAccounts()
-  const runningBalances                            = useRunningBalances(year, month)
+  const { data: transactions    = [], isLoading } = useTransactionsByMonth(year, month)
+  const { data: sharedExpenses  = [] }            = useSharedExpensesByMonth(year, month)
+  const { data: accounts        = [] }            = useSortedAccounts()
+  const { data: myGroupExpenses = [] }            = useMyGroupExpenses(year, month)
+  const runningBalances                           = useRunningBalances(year, month)
+
+  // Map transactionId → { groupId, groupName } for linked group entries
+  const txIds = useMemo(() => transactions.map(t => t.id!).filter(Boolean), [transactions])
+  const { data: txGroupMap = {} } = useQuery({
+    queryKey: ['txLinkedGroups', txIds],
+    queryFn:  () => groupsRepo.getLinkedGroups(txIds),
+    enabled:  txIds.length > 0,
+    staleTime: 30_000,
+  })
+
+  // Map seId → { groupId, groupName } for SE rows linked to a group entry
+  const seIds = useMemo(
+    () => sharedExpenses.filter(se => se.payer !== 'me').map(se => se.id!).filter(Boolean),
+    [sharedExpenses],
+  )
+  const { data: seGroupMap = {} } = useQuery({
+    queryKey: ['seLinkedGroups', seIds],
+    queryFn:  () => groupsRepo.getLinkedGroupsForSEs(seIds),
+    enabled:  seIds.length > 0,
+    staleTime: 30_000,
+  })
 
   const accountsById = useMemo(
     () => Object.fromEntries(accounts.map(a => [a.id!, a])) as Record<number, Account>,
@@ -43,41 +69,49 @@ export function useTransactionsPageModel() {
 
   const currentDate = useMemo(() => new Date(year, month - 1, 1), [year, month])
 
-  // Categories present in the current month (from both transactions and shared expenses)
+  // Categories present in the current month (from transactions, SEs, and group expenses)
   const categoriesInMonth = useMemo(
     () => [...new Set([
       ...transactions.map(tx => tx.category),
       ...sharedExpenses.map(se => se.category),
+      ...myGroupExpenses.map(ge => ge.category),
     ])],
-    [transactions, sharedExpenses],
+    [transactions, sharedExpenses, myGroupExpenses],
   )
 
   // Merged + sorted list with discriminated union
   const listItems = useMemo<ListItem[]>(() => {
     const txItems: ListItem[] = transactions
       .filter(tx => {
-        if (filterSource === 'shared' && (tx.id == null || txSeMap[tx.id] == null)) return false
+        if (filterSource === 'shared' && (tx.id == null || txSeMap[tx.id] == null) && (tx.id == null || txGroupMap[tx.id] == null)) return false
         if (filterAccountId !== null && tx.accountId !== filterAccountId && tx.toAccountId !== filterAccountId) return false
         if (filterCategory !== null && tx.category !== filterCategory) return false
         return true
       })
-      .map(tx => ({ kind: 'tx', data: tx }))
+      .map(tx => ({ kind: 'tx' as const, data: tx }))
 
     const seItems: ListItem[] = sharedExpenses
       .filter(se => {
-        if (se.payer === 'me') return false          // shown as badge on TransactionRow
+        if (se.payer === 'me') return false                    // shown as badge on TransactionRow
+        if (se.id != null && seGroupMap[se.id] != null) return false  // superseded by group-expense row
         if (filterSource === 'bank') return false
         if (filterCategory !== null && se.category !== filterCategory) return false
         return true
       })
-      .map(se => ({ kind: 'se', data: se }))
+      .map(se => ({ kind: 'se' as const, data: se }))
 
-    return [...txItems, ...seItems].sort((a, b) => {
-      const dateA = a.kind === 'tx' ? a.data.date : a.data.date
-      const dateB = b.kind === 'tx' ? b.data.date : b.data.date
-      return dateB.localeCompare(dateA)
-    })
-  }, [transactions, sharedExpenses, filterAccountId, filterCategory, filterSource])
+    const groupExpenseItems: ListItem[] = myGroupExpenses
+      .filter(ge => {
+        if (filterSource === 'bank') return false
+        if (filterCategory !== null && ge.category !== filterCategory) return false
+        return true
+      })
+      .map(ge => ({ kind: 'group-expense' as const, data: ge }))
+
+    return [...txItems, ...seItems, ...groupExpenseItems].sort((a, b) =>
+      b.data.date.localeCompare(a.data.date)
+    )
+  }, [transactions, sharedExpenses, myGroupExpenses, txSeMap, txGroupMap, seGroupMap, filterAccountId, filterCategory, filterSource])
 
   const prevMonth = () => {
     if (month === 1) { setMonth(12); setYear(y => y - 1); return }
@@ -138,6 +172,8 @@ export function useTransactionsPageModel() {
     editingSE,
     listItems,
     txSeMap,
+    txGroupMap,
+    seGroupMap,
     isLoading,
     accounts,
     accountsById,

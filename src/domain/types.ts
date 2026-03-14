@@ -117,9 +117,23 @@ export interface GroupEntry {
   category: string
   totalAmount: number    // cents, positive
   paidByMemberId: number
+  transactionId?:    number // FK → transactions.id (optional link to bank tx)
+  sharedExpenseId?:  number // FK → shared_expenses.id (optional link to SE with payer=other)
   notes?: string
   createdBy: string
   createdAt: string
+}
+
+/** View model for a group entry where another member paid and the user owes their share */
+export interface GroupExpenseItem {
+  entryId:     number
+  groupId:     number
+  groupName:   string
+  description: string
+  date:        string   // YYYY-MM-DD
+  category:    string
+  myShare:     number   // cents – user's split amount
+  paidByName:  string
 }
 
 export interface GroupEntrySplit {

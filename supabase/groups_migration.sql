@@ -255,3 +255,25 @@ drop trigger if exists trg_add_creator_as_member on public.groups;
 create trigger trg_add_creator_as_member
   after insert on public.groups
   for each row execute function public.add_creator_as_member();
+
+-- ============================================================
+-- Phase 2: link group entries to bank transactions
+-- Run separately if tables already exist.
+-- ============================================================
+alter table public.group_entries
+  add column if not exists transaction_id int references public.transactions(id) on delete set null;
+
+create index if not exists idx_group_entries_transaction_id
+  on public.group_entries(transaction_id)
+  where transaction_id is not null;
+
+-- ============================================================
+-- Phase 3: link group entries to shared expenses (payer=other)
+-- Run separately if tables already exist.
+-- ============================================================
+alter table public.group_entries
+  add column if not exists shared_expense_id int references public.shared_expenses(id) on delete set null;
+
+create index if not exists idx_group_entries_shared_expense_id
+  on public.group_entries(shared_expense_id)
+  where shared_expense_id is not null;

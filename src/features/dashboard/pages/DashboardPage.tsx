@@ -513,6 +513,9 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Groups widget */}
+      <GroupsWidget />
+
       {/* Investment account evolution */}
       {investmentAccounts.length > 0 && (
         <div>
@@ -526,9 +529,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Groups widget */}
-      <GroupsWidget />
 
       </>)}
     </div>

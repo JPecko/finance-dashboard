@@ -8,9 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toCents, fromCents } from '@/domain/money'
 import { CATEGORIES } from '@/domain/categories'
 import { addGroupEntry, updateGroupEntry } from '@/shared/hooks/useGroups'
+import { addTransaction } from '@/shared/hooks/useTransactions'
+import { useSortedAccounts } from '@/shared/hooks/useAccounts'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useT } from '@/shared/i18n'
 import type { GroupEntry, GroupEntrySplit, GroupMember } from '@/domain/types'
+
+function Toggle({ on }: { on: boolean }) {
+  return (
+    <div className="relative shrink-0">
+      <div className={`h-5 w-9 rounded-full transition-colors ${on ? 'bg-primary' : 'bg-muted'}`} />
+      <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${on ? 'left-5' : 'left-1'}`} />
+    </div>
+  )
+}
 
 interface FormValues {
   description: string
@@ -64,9 +75,12 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
     },
   })
 
-  const [splits,    setSplits]    = useState<SplitRow[]>([])
-  const [splitMode, setSplitMode] = useState<'even' | 'custom'>('even')
-  const [splitError, setSplitError] = useState('')
+  const { data: accounts = [] } = useSortedAccounts()
+  const [splits,      setSplits]      = useState<SplitRow[]>([])
+  const [splitMode,   setSplitMode]   = useState<'even' | 'custom'>('even')
+  const [splitError,  setSplitError]  = useState('')
+  const [createTx,    setCreateTx]    = useState(false)
+  const [txAccountId, setTxAccountId] = useState('')
 
   // Initialise when modal opens
   useEffect(() => {
@@ -106,7 +120,9 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
       setSplitMode('even')
     }
     setSplitError('')
-  }, [open, entry, existingSplits, members, isEdit, reset])
+    setCreateTx(false)
+    setTxAccountId(accounts[0]?.id ? String(accounts[0].id) : '')
+  }, [open, entry, existingSplits, members, isEdit, reset, accounts])
 
   // When total changes in 'even' mode, recompute split previews
   const totalAmountStr = watch('totalAmount')
@@ -179,6 +195,17 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
       await updateGroupEntry(entry.id, groupId, entryData, splitsData)
     } else {
       await addGroupEntry(entryData, splitsData)
+      if (createTx && txAccountId) {
+        await addTransaction({
+          accountId:      parseInt(txAccountId),
+          amount:         -totalCents,
+          type:           'expense',
+          category:       values.category,
+          description:    values.description.trim(),
+          date:           values.date,
+          isReimbursable: true,
+        })
+      }
     }
     onClose()
   }
@@ -304,6 +331,35 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
             <Label htmlFor="notes">Notes (optional)</Label>
             <Input id="notes" placeholder="Optional note..." {...register('notes')} />
           </div>
+
+          {/* Create bank transaction - create mode only */}
+          {!isEdit && (
+            <>
+              <label
+                className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border cursor-pointer hover:bg-accent/60 transition-colors"
+                onClick={e => { e.preventDefault(); setCreateTx(v => !v) }}
+              >
+                <div>
+                  <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('groups.debitAccount')}</p>
+                </div>
+                <Toggle on={createTx} />
+              </label>
+              {createTx && (
+                <div className="space-y-1.5">
+                  <Label>{t('groups.debitAccount')}</Label>
+                  <Select value={txAccountId} onValueChange={setTxAccountId}>
+                    <SelectTrigger><SelectValue placeholder="Select account..." /></SelectTrigger>
+                    <SelectContent>
+                      {accounts.map(acc => (
+                        <SelectItem key={acc.id} value={String(acc.id)}>{acc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>

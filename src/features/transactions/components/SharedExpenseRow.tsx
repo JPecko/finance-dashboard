@@ -1,4 +1,4 @@
-import { Pencil, Trash2, RotateCcw } from 'lucide-react'
+import { Pencil, Trash2, RotateCcw, Users } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import {
@@ -15,13 +15,14 @@ const ROW_BASE_CLASS =
   `relative px-4 py-3 transition-colors group flex items-center gap-3 md:grid ${TRANSACTIONS_GRID_COLS} md:gap-x-3 md:items-center`
 
 interface SharedExpenseRowProps {
-  se:       SharedExpense
-  onEdit:   (se: SharedExpense) => void
-  onDelete: (id: number) => Promise<void>
-  onReopen: (id: number) => Promise<void>
+  se:           SharedExpense
+  onEdit:       (se: SharedExpense) => void
+  onDelete:     (id: number) => Promise<void>
+  onReopen:     (id: number) => Promise<void>
+  linkedGroup?: { groupId: number; groupName: string }
 }
 
-export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen }: SharedExpenseRowProps) {
+export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen, linkedGroup }: SharedExpenseRowProps) {
   const t   = useT()
   const cat = getCategoryById(se.category)
 
@@ -41,6 +42,16 @@ export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen }: Sha
         <p className="text-sm font-semibold truncate leading-snug">{se.description || '—'}</p>
         {se.payer === 'other' && (
           <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
+        )}
+        {linkedGroup && (
+          <Badge
+            variant="secondary"
+            className="text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer border-violet-500/50 text-violet-600 dark:text-violet-400"
+            onClick={() => onEdit(se)}
+          >
+            <Users className="h-3 w-3 mr-1" />
+            {linkedGroup.groupName}
+          </Badge>
         )}
         {se.status === 'open' && (
           <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400 uppercase">
@@ -80,7 +91,7 @@ export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen }: Sha
             <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
           )}
         </div>
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           <Badge
             variant="secondary"
             className="text-xs px-1.5 py-0 h-5 shrink-0"
@@ -88,6 +99,16 @@ export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen }: Sha
           >
             {tCategory(cat.id, t)}
           </Badge>
+          {linkedGroup && (
+            <Badge
+              variant="secondary"
+              className="text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer border-violet-500/50 text-violet-600 dark:text-violet-400"
+              onClick={() => onEdit(se)}
+            >
+              <Users className="h-3 w-3 mr-1" />
+              {linkedGroup.groupName}
+            </Badge>
+          )}
           {se.status === 'open' && (
             <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400 uppercase">
               {t('sharedExpenses.statusOpen')}

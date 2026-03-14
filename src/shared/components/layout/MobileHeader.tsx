@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, NavLink } from 'react-router-dom' // useNavigate kept for handleLogoClick
 import { Sun, Moon, LogOut, Settings, Languages } from 'lucide-react'
 import { useThemeStore } from '@/shared/store/themeStore'
 import { useLanguageStore } from '@/shared/store/languageStore'
@@ -47,9 +47,20 @@ export default function MobileHeader() {
         <span className="text-[10px] text-muted-foreground/60">{APP_VERSION}</span>
       </button>
 
+      <div className="flex items-center gap-4">
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `flex h-9 w-9 items-center justify-center rounded-full transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`
+          }
+          aria-label={t('sidebar.settings')}
+        >
+          <Settings className="h-5 w-5" />
+        </NavLink>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity">
+          <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity">
             {initials}
           </button>
         </DropdownMenuTrigger>
@@ -66,16 +77,13 @@ export default function MobileHeader() {
             <span className="ml-auto text-xs text-muted-foreground">{lang.toUpperCase()}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate('/settings')}>
-            <Settings className="h-4 w-4 mr-2" />
-            {t('sidebar.settings')}
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => supabase.auth.signOut()} className="text-destructive focus:text-destructive">
             <LogOut className="h-4 w-4 mr-2" />
             {t('sidebar.signOut')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   )
 }

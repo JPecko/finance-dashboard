@@ -4,6 +4,7 @@ import type {
   GroupMember,
   GroupEntry,
   GroupEntrySplit,
+  GroupExpenseItem,
   MemberBalance,
   SimplifiedDebt,
 } from '@/domain/types'
@@ -35,6 +36,8 @@ type GroupEntryRow = {
   category: string
   total_amount: number
   paid_by_member_id: number
+  transaction_id: number | null
+  shared_expense_id: number | null
   notes: string | null
   created_by: string
   created_at: string
@@ -79,7 +82,9 @@ function toEntry(r: GroupEntryRow): GroupEntry {
     category:         r.category,
     totalAmount:      r.total_amount,
     paidByMemberId:   r.paid_by_member_id,
-    notes:            r.notes ?? undefined,
+    transactionId:    r.transaction_id    ?? undefined,
+    sharedExpenseId:  r.shared_expense_id ?? undefined,
+    notes:            r.notes             ?? undefined,
     createdBy:        r.created_by,
     createdAt:        r.created_at,
   }
@@ -218,7 +223,9 @@ export const groupsRepo = {
         category:           entry.category,
         total_amount:       entry.totalAmount,
         paid_by_member_id:  entry.paidByMemberId,
-        notes:              entry.notes ?? null,
+        transaction_id:     entry.transactionId    ?? null,
+        shared_expense_id:  entry.sharedExpenseId  ?? null,
+        notes:              entry.notes            ?? null,
         created_by:         entry.createdBy,
       })
       .select('id')
@@ -236,7 +243,9 @@ export const groupsRepo = {
         ...(changes.category         != null && { category:          changes.category }),
         ...(changes.totalAmount      != null && { total_amount:      changes.totalAmount }),
         ...(changes.paidByMemberId   != null && { paid_by_member_id: changes.paidByMemberId }),
-        ...(changes.notes            !== undefined && { notes:        changes.notes ?? null }),
+        ...(changes.transactionId   !== undefined && { transaction_id:    changes.transactionId   ?? null }),
+        ...(changes.sharedExpenseId !== undefined && { shared_expense_id: changes.sharedExpenseId ?? null }),
+        ...(changes.notes           !== undefined && { notes:             changes.notes           ?? null }),
       })
       .eq('id', id)
     if (error) throw error
@@ -269,6 +278,134 @@ export const groupsRepo = {
       .eq('group_entries.group_id', groupId)
     if (error) throw error
     return (data as GroupEntrySplitRow[]).map(toSplit)
+  },
+
+  /** Returns the group entry (+ splits) linked to a bank transaction, or null. */
+  getEntryByTransactionId: async (transactionId: number): Promise<{ entry: GroupEntry; splits: GroupEntrySplit[] } | null> => {
+    const { data, error } = await supabase
+      .from('group_entries')
+      .select('*')
+      .eq('transaction_id', transactionId)
+      .maybeSingle()
+    if (error || !data) return null
+    const entry = toEntry(data as GroupEntryRow)
+    const { data: splitData } = await supabase
+      .from('group_entry_splits')
+      .select('*')
+      .eq('entry_id', entry.id!)
+    return { entry, splits: (splitData as GroupEntrySplitRow[] ?? []).map(toSplit) }
+  },
+
+  /** Returns the group entry (+ splits) linked to a shared expense, or null. */
+  getEntryBySharedExpenseId: async (seId: number): Promise<{ entry: GroupEntry; splits: GroupEntrySplit[] } | null> => {
+    const { data, error } = await supabase
+      .from('group_entries')
+      .select('*')
+      .eq('shared_expense_id', seId)
+      .maybeSingle()
+    if (error || !data) return null
+    const entry = toEntry(data as GroupEntryRow)
+    const { data: splitData } = await supabase
+      .from('group_entry_splits')
+      .select('*')
+      .eq('entry_id', entry.id!)
+    return { entry, splits: (splitData as GroupEntrySplitRow[] ?? []).map(toSplit) }
+  },
+
+  /** Batch: for a list of SE ids, returns a map seId → { groupId, groupName }. */
+  getLinkedGroupsForSEs: async (seIds: number[]): Promise<Record<number, { groupId: number; groupName: string }>> => {
+    if (seIds.length === 0) return {}
+    const { data, error } = await supabase
+      .from('group_entries')
+      .select('shared_expense_id, group_id, groups!inner(name)')
+      .in('shared_expense_id', seIds)
+    if (error || !data) return {}
+    const result: Record<number, { groupId: number; groupName: string }> = {}
+    for (const row of data as Array<{ shared_expense_id: number; group_id: number; groups: { name: string } }>) {
+      if (row.shared_expense_id != null) {
+        result[row.shared_expense_id] = { groupId: row.group_id, groupName: row.groups.name }
+      }
+    }
+    return result
+  },
+
+  /** Batch: for a list of transactionIds, returns a map txId → { groupId, groupName }. */
+  getLinkedGroups: async (transactionIds: number[]): Promise<Record<number, { groupId: number; groupName: string }>> => {
+    if (transactionIds.length === 0) return {}
+    const { data, error } = await supabase
+      .from('group_entries')
+      .select('transaction_id, group_id, groups!inner(name)')
+      .in('transaction_id', transactionIds)
+    if (error || !data) return {}
+    const result: Record<number, { groupId: number; groupName: string }> = {}
+    for (const row of data as Array<{ transaction_id: number; group_id: number; groups: { name: string } }>) {
+      if (row.transaction_id != null) {
+        result[row.transaction_id] = { groupId: row.group_id, groupName: row.groups.name }
+      }
+    }
+    return result
+  },
+
+  /**
+   * Returns all group entries in a given month where another member paid
+   * and the current user has a non-zero split. Used to show virtual expense
+   * rows in the transaction list for category budgeting.
+   */
+  getMyGroupExpensesForMonth: async (year: number, month: number): Promise<GroupExpenseItem[]> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return []
+
+    // Find the current user's member records across all groups
+    const { data: myMembers, error: membErr } = await supabase
+      .from('group_members')
+      .select('id')
+      .eq('user_id', session.user.id)
+    if (membErr || !myMembers?.length) return []
+
+    const memberIds = (myMembers as { id: number }[]).map(m => m.id)
+    const from = `${year}-${String(month).padStart(2, '0')}-01`
+    const toYear  = month === 12 ? year + 1 : year
+    const toMonth = month === 12 ? 1 : month + 1
+    const to = `${toYear}-${String(toMonth).padStart(2, '0')}-01`
+
+    // Fetch splits for the user in entries of that month, excluding entries they paid
+    const { data, error } = await supabase
+      .from('group_entry_splits')
+      .select(`
+        amount,
+        member_id,
+        group_entries!inner(
+          id, group_id, description, date, category, total_amount, paid_by_member_id,
+          groups!inner(name),
+          payer:group_members!paid_by_member_id(name)
+        )
+      `)
+      .in('member_id', memberIds)
+      .gt('amount', 0)
+      .gte('group_entries.date', from)
+      .lt('group_entries.date', to)
+      .not('group_entries.paid_by_member_id', 'in', `(${memberIds.join(',')})`)
+    if (error || !data) return []
+
+    type Row = {
+      amount: number
+      group_entries: {
+        id: number; group_id: number; description: string; date: string
+        category: string; total_amount: number; paid_by_member_id: number
+        groups: { name: string }
+        payer: { name: string } | null
+      }
+    }
+    return (data as Row[]).map(row => ({
+      entryId:     row.group_entries.id,
+      groupId:     row.group_entries.group_id,
+      groupName:   row.group_entries.groups.name,
+      description: row.group_entries.description,
+      date:        row.group_entries.date,
+      category:    row.group_entries.category,
+      myShare:     row.amount,
+      paidByName:  row.group_entries.payer?.name ?? '—',
+    }))
   },
 
   setSplitsForEntry: async (entryId: number, splits: Omit<GroupEntrySplit, 'id'>[]): Promise<void> => {

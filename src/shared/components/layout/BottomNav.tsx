@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { navItems } from '@/shared/config/nav'
 import { useT } from '@/shared/i18n'
 
-const MOBILE_NAV_ORDER = ['/dashboard', '/transactions', '/accounts', '/recurring', '/settings']
+const MOBILE_NAV_ORDER = ['/dashboard', '/transactions', '/accounts', '/recurring', '/groups']
 const mobileNavItems = MOBILE_NAV_ORDER.map(to => navItems.find(n => n.to === to)!)
 
 export default function BottomNav() {
