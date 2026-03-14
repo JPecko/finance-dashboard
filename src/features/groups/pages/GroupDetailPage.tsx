@@ -409,8 +409,9 @@ export default function GroupDetailPage() {
               const entrySplits = splitsByEntry[entry.id!] ?? []
               const myEntryShare = myMember ? entrySplits.find(s => s.memberId === myMember.id) : undefined
 
+              const iPaid = myMember != null && entry.paidByMemberId === myMember.id
               return (
-                <Card key={entry.id} className="overflow-hidden">
+                <Card key={entry.id} className={`overflow-hidden ${iPaid ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5'}`}>
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-start gap-3">
                       <div
