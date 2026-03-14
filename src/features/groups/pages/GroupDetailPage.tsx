@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Pencil, Trash2, UserPlus, UserMinus,
-  TrendingUp, TrendingDown, Minus, ArrowRight, Receipt,
+  TrendingUp, TrendingDown, Minus, ArrowRight, Receipt, BadgeCheck,
 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
@@ -18,6 +18,7 @@ import {
 import { Label } from '@/shared/components/ui/label'
 import PageLoader from '@/shared/components/PageLoader'
 import { useGroupDetail, useGroupMembers, useGroupEntries, useGroupSplits, useGroupBalances, removeGroup, addGroupMember, updateGroupMember, removeGroupMember, removeGroupEntry } from '@/shared/hooks/useGroups'
+import { supabase } from '@/data/supabase'
 import { formatMoney } from '@/domain/money'
 import { getCategoryById } from '@/domain/categories'
 import { formatDate } from '@/shared/utils/format'
@@ -37,18 +38,41 @@ interface AddMemberDialogProps {
 }
 
 function MemberDialog({ open, onClose, groupId, member }: AddMemberDialogProps) {
-  const t      = useT()
-  const [name,  setName]  = useState(member?.name  ?? '')
-  const [email, setEmail] = useState(member?.email ?? '')
-  const [busy,  setBusy]  = useState(false)
+  const t = useT()
+  const [name,        setName]        = useState(member?.name  ?? '')
+  const [email,       setEmail]       = useState(member?.email ?? '')
+  const [resolvedUid, setResolvedUid] = useState<string | undefined>(member?.userId)
+  const [looking,     setLooking]     = useState(false)
+  const [busy,        setBusy]        = useState(false)
+  const prevOpen = useRef(false)
 
   // Reset on open
-  useState(() => {
-    if (open) {
+  if (open && !prevOpen.current) {
+    prevOpen.current = true
+    setTimeout(() => {
       setName(member?.name ?? '')
       setEmail(member?.email ?? '')
+      setResolvedUid(member?.userId)
+    }, 0)
+  }
+  if (!open && prevOpen.current) prevOpen.current = false
+
+  async function handleEmailBlur() {
+    const trimmed = email.trim()
+    if (!trimmed || member) return   // skip lookup in edit mode
+    setLooking(true)
+    try {
+      const { data } = await supabase.rpc('lookup_user_by_email', { p_email: trimmed })
+      if (data && data.length > 0) {
+        setResolvedUid(data[0].user_id)
+        if (!name.trim()) setName(data[0].display_name)
+      } else {
+        setResolvedUid(undefined)
+      }
+    } finally {
+      setLooking(false)
     }
-  })
+  }
 
   async function handleSave() {
     if (!name.trim()) return
@@ -57,7 +81,12 @@ function MemberDialog({ open, onClose, groupId, member }: AddMemberDialogProps) 
       if (member?.id != null) {
         await updateGroupMember(member.id, groupId, { name: name.trim(), email: email.trim() || undefined })
       } else {
-        await addGroupMember({ groupId, name: name.trim(), email: email.trim() || undefined })
+        await addGroupMember({
+          groupId,
+          name:   name.trim(),
+          email:  email.trim() || undefined,
+          userId: resolvedUid,
+        })
       }
       onClose()
     } finally {
@@ -73,20 +102,33 @@ function MemberDialog({ open, onClose, groupId, member }: AddMemberDialogProps) 
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
+            <Label>{t('groups.memberEmail')}</Label>
+            <div className="relative">
+              <Input
+                type="email"
+                placeholder="email@example.com"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setResolvedUid(undefined) }}
+                onBlur={handleEmailBlur}
+                disabled={!!member}
+              />
+              {looking && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">…</span>
+              )}
+            </div>
+            {resolvedUid && !looking && (
+              <p className="text-xs text-emerald-600 flex items-center gap-1">
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Utilizador Financelli encontrado
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
             <Label>{t('groups.memberName')}</Label>
             <Input
               placeholder={t('groups.memberNamePlaceholder')}
               value={name}
               onChange={e => setName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t('groups.memberEmail')}</Label>
-            <Input
-              type="email"
-              placeholder="email@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
             />
           </div>
         </div>

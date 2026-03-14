@@ -59,6 +59,24 @@ alter table public.group_members       enable row level security;
 alter table public.group_entries       enable row level security;
 alter table public.group_entry_splits  enable row level security;
 
+-- ---- Helper: lookup Financelli user by email ------------------
+create or replace function public.lookup_user_by_email(p_email text)
+returns table (user_id uuid, display_name text)
+language sql
+security definer
+stable
+as $$
+  select
+    id,
+    coalesce(
+      nullif(raw_user_meta_data->>'full_name', ''),
+      split_part(email, '@', 1)
+    )
+  from auth.users
+  where email = lower(trim(p_email))
+  limit 1;
+$$;
+
 -- ---- Helper: is the current user a member of a group? ---------
 create or replace function public.is_group_member(p_group_id int)
 returns boolean
