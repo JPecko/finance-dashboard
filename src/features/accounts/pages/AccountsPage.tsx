@@ -22,6 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useAccounts, sortAccounts, removeAccount } from '@/shared/hooks/useAccounts'
 import { useHoldings } from '@/shared/hooks/useHoldings'
+import { useAssets } from '@/shared/hooks/useAssets'
 import { useAccountPrefsStore, type SortKey } from '@/shared/store/accountPrefsStore'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import BankLogo from '@/shared/components/BankLogo'
@@ -308,6 +309,8 @@ export default function AccountsPage() {
   }
 
   const { data: holdings = [] } = useHoldings()
+  const { data: assets   = [] } = useAssets()
+  const assetMap = Object.fromEntries(assets.map(a => [a.id!, a]))
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
   const orderForSort = isManualEditing ? effectiveDraftOrder : manualOrder
@@ -492,7 +495,7 @@ export default function AccountsPage() {
                   const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
                   const accountHoldings = holdings.filter(h => h.accountId === account.id)
                   const marketValue = accountHoldings.length > 0
-                    ? accountHoldings.reduce((s, h) => s + h.quantity * h.currentPrice, 0)
+                    ? accountHoldings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
                     : null
                   const costBasis = accountHoldings.length > 0
                     ? accountHoldings.reduce((s, h) => s + h.quantity * h.avgCost, 0)

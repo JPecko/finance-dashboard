@@ -7,14 +7,12 @@ import { Label } from '@/shared/components/ui/label'
 import { toCents, fromCents } from '@/domain/money'
 import { addHolding, updateHolding } from '@/shared/hooks/useHoldings'
 import { useT } from '@/shared/i18n'
-import type { Holding } from '@/domain/types'
+import type { Asset, Holding } from '@/domain/types'
 
 interface FormValues {
-  name:         string
-  ticker:       string
-  quantity:     string
-  avgCost:      string
-  currentPrice: string
+  assetId:  string
+  quantity: string
+  avgCost:  string
 }
 
 interface Props {
@@ -22,39 +20,36 @@ interface Props {
   onClose:   () => void
   accountId: number
   holding?:  Holding
+  assets:    Asset[]
 }
 
-export default function HoldingFormModal({ open, onClose, accountId, holding }: Props) {
+export default function HoldingFormModal({ open, onClose, accountId, holding, assets }: Props) {
   const t      = useT()
   const isEdit = !!holding
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    defaultValues: { name: '', ticker: '', quantity: '0', avgCost: '0', currentPrice: '0' },
+  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormValues>({
+    defaultValues: { assetId: '', quantity: '0', avgCost: '0' },
   })
 
   useEffect(() => {
     if (!open) return
     if (holding) {
       reset({
-        name:         holding.name,
-        ticker:       holding.ticker ?? '',
-        quantity:     String(holding.quantity),
-        avgCost:      fromCents(holding.avgCost).toFixed(4),
-        currentPrice: fromCents(holding.currentPrice).toFixed(4),
+        assetId:  String(holding.assetId),
+        quantity: String(holding.quantity),
+        avgCost:  fromCents(holding.avgCost).toFixed(4),
       })
     } else {
-      reset({ name: '', ticker: '', quantity: '0', avgCost: '0', currentPrice: '0' })
+      reset({ assetId: assets[0]?.id ? String(assets[0].id) : '', quantity: '0', avgCost: '0' })
     }
-  }, [open, holding, reset])
+  }, [open, holding, assets, reset])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
       accountId,
-      name:         values.name.trim(),
-      ticker:       values.ticker.trim() || undefined,
-      quantity:     parseFloat(values.quantity) || 0,
-      avgCost:      toCents(parseFloat(values.avgCost) || 0),
-      currentPrice: toCents(parseFloat(values.currentPrice) || 0),
+      assetId:  parseInt(values.assetId),
+      quantity: parseFloat(values.quantity) || 0,
+      avgCost:  toCents(parseFloat(values.avgCost) || 0),
     }
     if (isEdit && holding?.id != null) {
       await updateHolding(holding.id, payload)
@@ -74,43 +69,39 @@ export default function HoldingFormModal({ open, onClose, accountId, holding }: 
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-          {/* Name */}
+          {/* Asset picker */}
           <div className="space-y-1">
-            <Label htmlFor="h-name">{t('investments.holding')}</Label>
-            <Input
-              id="h-name"
-              placeholder="e.g. VWCE ETF, Apple Inc."
-              {...register('name', { required: 'Name is required' })}
-            />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            <Label htmlFor="h-asset">{t('investments.asset')}</Label>
+            {assets.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('investments.noAssetsToLink')}</p>
+            ) : (
+              <select
+                id="h-asset"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                {...register('assetId', { required: true })}
+              >
+                {assets.map(a => (
+                  <option key={a.id} value={String(a.id)}>
+                    {a.name}{a.ticker ? ` (${a.ticker.toUpperCase()})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {/* Ticker */}
-          <div className="space-y-1">
-            <Label htmlFor="h-ticker">{t('investments.ticker')} <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Input
-              id="h-ticker"
-              placeholder="e.g. VWCE, AAPL"
-              className="uppercase"
-              {...register('ticker')}
-            />
-          </div>
-
-          {/* Quantity */}
-          <div className="space-y-1">
-            <Label htmlFor="h-qty">{t('investments.quantity')}</Label>
-            <Input
-              id="h-qty"
-              type="number"
-              step="0.000001"
-              min="0"
-              placeholder="0"
-              {...register('quantity', { required: true })}
-            />
-          </div>
-
-          {/* Avg Cost + Current Price */}
+          {/* Quantity + Avg Cost */}
           <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="h-qty">{t('investments.quantity')}</Label>
+              <Input
+                id="h-qty"
+                type="number"
+                step="0.000001"
+                min="0"
+                placeholder="0"
+                {...register('quantity', { required: true })}
+              />
+            </div>
             <div className="space-y-1">
               <Label htmlFor="h-avgcost">{t('investments.avgCost')}</Label>
               <Input
@@ -122,24 +113,13 @@ export default function HoldingFormModal({ open, onClose, accountId, holding }: 
                 {...register('avgCost', { required: true })}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="h-price">{t('investments.currentPrice')}</Label>
-              <Input
-                id="h-price"
-                type="number"
-                step="0.0001"
-                min="0"
-                placeholder="0.00"
-                {...register('currentPrice', { required: true })}
-              />
-            </div>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" loading={isSubmitting}>
+            <Button type="submit" loading={isSubmitting} disabled={assets.length === 0}>
               {isEdit ? t('common.save') : t('investments.addHolding')}
             </Button>
           </DialogFooter>

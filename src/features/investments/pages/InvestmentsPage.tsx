@@ -1,36 +1,46 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { TrendingUp, TrendingDown, Plus, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { useAccounts } from '@/shared/hooks/useAccounts'
 import { useHoldings, removeHolding } from '@/shared/hooks/useHoldings'
-import { formatMoney } from '@/domain/money'
+import { useAssets, removeAsset, updateAsset } from '@/shared/hooks/useAssets'
+import { formatMoney, toCents, fromCents } from '@/domain/money'
 import { useT } from '@/shared/i18n'
 import HoldingFormModal from '../components/HoldingFormModal'
-import type { Holding } from '@/domain/types'
+import AssetFormModal from '../components/AssetFormModal'
+import type { Asset, Holding } from '@/domain/types'
 
 export default function InvestmentsPage() {
   const t = useT()
   const { data: accounts = [], isLoading: loadingAccounts } = useAccounts()
   const { data: holdings = [], isLoading: loadingHoldings } = useHoldings()
+  const { data: assets = [],   isLoading: loadingAssets }   = useAssets()
 
-  const [modalOpen,     setModalOpen]     = useState(false)
-  const [editHolding,   setEditHolding]   = useState<Holding | undefined>()
-  const [modalAccount,  setModalAccount]  = useState<number>(0)
-  const [expanded,      setExpanded]      = useState<Record<number, boolean>>({})
+  const [holdingModalOpen, setHoldingModalOpen] = useState(false)
+  const [editHolding,      setEditHolding]      = useState<Holding | undefined>()
+  const [modalAccount,     setModalAccount]     = useState<number>(0)
+  const [expanded,         setExpanded]         = useState<Record<number, boolean>>({})
+
+  const [assetModalOpen, setAssetModalOpen] = useState(false)
+  const [editAsset,      setEditAsset]      = useState<Asset | undefined>()
+
+  const [editingPrice, setEditingPrice] = useState<{ assetId: number; value: string } | null>(null)
+  const priceInputRef = useRef<HTMLInputElement>(null)
 
   const investmentAccounts = accounts.filter(a => a.type === 'investment')
+  const assetMap = Object.fromEntries(assets.map(a => [a.id!, a]))
 
-  const openAdd = (accountId: number) => {
+  const openAddHolding = (accountId: number) => {
     setEditHolding(undefined)
     setModalAccount(accountId)
-    setModalOpen(true)
+    setHoldingModalOpen(true)
   }
-  const openEdit = (holding: Holding) => {
+  const openEditHolding = (holding: Holding) => {
     setEditHolding(holding)
     setModalAccount(holding.accountId)
-    setModalOpen(true)
+    setHoldingModalOpen(true)
   }
-  const handleDelete = async (holding: Holding) => {
+  const handleDeleteHolding = async (holding: Holding) => {
     if (!confirm(t('investments.deleteConfirm'))) return
     await removeHolding(holding.id!)
   }
@@ -38,7 +48,27 @@ export default function InvestmentsPage() {
     setExpanded(prev => ({ ...prev, [accountId]: !prev[accountId] }))
   }
 
-  if (loadingAccounts || loadingHoldings) {
+  const openAddAsset  = () => { setEditAsset(undefined); setAssetModalOpen(true) }
+  const openEditAsset = (asset: Asset) => { setEditAsset(asset); setAssetModalOpen(true) }
+  const handleDeleteAsset = async (asset: Asset) => {
+    if (!confirm(t('investments.deleteAssetConfirm'))) return
+    await removeAsset(asset.id!)
+  }
+
+  const startEditPrice = (asset: Asset) => {
+    setEditingPrice({ assetId: asset.id!, value: String(fromCents(asset.currentPrice)) })
+    setTimeout(() => priceInputRef.current?.select(), 0)
+  }
+  const commitEditPrice = async (asset: Asset) => {
+    if (!editingPrice || editingPrice.assetId !== asset.id) return
+    const parsed = parseFloat(editingPrice.value.replace(',', '.'))
+    if (!isNaN(parsed) && parsed >= 0) {
+      await updateAsset(asset.id!, { currentPrice: toCents(parsed) })
+    }
+    setEditingPrice(null)
+  }
+
+  if (loadingAccounts || loadingHoldings || loadingAssets) {
     return (
       <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
         {t('common.loading')}
@@ -47,13 +77,97 @@ export default function InvestmentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">{t('investments.title')}</h1>
         <p className="text-muted-foreground text-sm mt-1">{t('investments.subtitle')}</p>
       </div>
 
+      {/* ── Assets section ─────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">{t('investments.assets')}</h2>
+          <Button variant="outline" size="sm" onClick={openAddAsset}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            {t('investments.addAsset')}
+          </Button>
+        </div>
+
+        {assets.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-sm text-muted-foreground">{t('investments.noAssets')}</p>
+          </div>
+        ) : (
+          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
+                  <th className="px-5 py-2.5 text-left font-medium">{t('investments.assetName')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium">{t('investments.ticker')}</th>
+                  <th className="px-4 py-2.5 text-right font-medium">{t('investments.currentPrice')}</th>
+                  <th className="px-4 py-2.5 w-16" />
+                </tr>
+              </thead>
+              <tbody>
+                {assets.map(asset => (
+                  <tr key={asset.id} className="border-b last:border-0 hover:bg-accent/20 transition-colors">
+                    <td className="px-5 py-3 font-medium">{asset.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground uppercase text-xs">{asset.ticker ?? '—'}</td>
+                    <td
+                      className="px-4 py-3 text-right tabular-nums cursor-pointer group"
+                      onClick={() => startEditPrice(asset)}
+                      title="Click to update price"
+                    >
+                      {editingPrice?.assetId === asset.id ? (
+                        <input
+                          ref={priceInputRef}
+                          type="number"
+                          step="0.0001"
+                          min="0"
+                          className="w-28 text-right tabular-nums bg-background border border-primary rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          value={editingPrice.value}
+                          onChange={e => setEditingPrice(prev => prev ? { ...prev, value: e.target.value } : null)}
+                          onBlur={() => { void commitEditPrice(asset) }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter')  { e.currentTarget.blur() }
+                            if (e.key === 'Escape') { setEditingPrice(null) }
+                          }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span className="group-hover:underline group-hover:decoration-dotted">
+                          {formatMoney(asset.currentPrice)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 justify-end">
+                        <button
+                          type="button"
+                          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                          onClick={() => openEditAsset(asset)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          onClick={() => { void handleDeleteAsset(asset) }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Per-account holdings ────────────────────────────────────────── */}
       {investmentAccounts.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <TrendingUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
@@ -62,12 +176,12 @@ export default function InvestmentsPage() {
         </div>
       ) : (
         investmentAccounts.map(account => {
-          const accountHoldings = holdings.filter(h => h.accountId === account.id)
-          const totalMarketValue = accountHoldings.reduce((s, h) => s + h.quantity * h.currentPrice, 0)
+          const accountHoldings  = holdings.filter(h => h.accountId === account.id)
+          const totalMarketValue = accountHoldings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
           const totalCostBasis   = accountHoldings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
           const totalPnL         = totalMarketValue - totalCostBasis
           const pnlPct           = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0
-          const isOpen           = expanded[account.id!] !== false  // default expanded
+          const isOpen           = expanded[account.id!] !== false
 
           return (
             <div key={account.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -83,7 +197,6 @@ export default function InvestmentsPage() {
                   <p className="text-xs text-muted-foreground">{account.currency}</p>
                 </div>
 
-                {/* Summary stats */}
                 <div className="hidden sm:flex items-center gap-6 text-sm shrink-0">
                   {account.investedBase != null && (
                     <div className="text-right">
@@ -106,7 +219,9 @@ export default function InvestmentsPage() {
                   )}
                 </div>
 
-                {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                {isOpen
+                  ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                  : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
               </button>
 
               {/* Holdings table */}
@@ -122,10 +237,9 @@ export default function InvestmentsPage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                            <th className="px-5 py-2.5 text-left font-medium">{t('investments.holding')}</th>
+                            <th className="px-5 py-2.5 text-left font-medium">{t('investments.asset')}</th>
                             <th className="px-4 py-2.5 text-right font-medium">{t('investments.quantity')}</th>
                             <th className="px-4 py-2.5 text-right font-medium">{t('investments.avgCost')}</th>
-                            <th className="px-4 py-2.5 text-right font-medium">{t('investments.currentPrice')}</th>
                             <th className="px-4 py-2.5 text-right font-medium">{t('investments.marketValue')}</th>
                             <th className="px-4 py-2.5 text-right font-medium">{t('investments.pnl')}</th>
                             <th className="px-4 py-2.5 w-16" />
@@ -133,7 +247,8 @@ export default function InvestmentsPage() {
                         </thead>
                         <tbody>
                           {accountHoldings.map(h => {
-                            const marketVal  = h.quantity * h.currentPrice
+                            const asset      = assetMap[h.assetId]
+                            const marketVal  = h.quantity * (asset?.currentPrice ?? 0)
                             const costBasis  = h.quantity * h.avgCost
                             const pnl        = marketVal - costBasis
                             const pnlPctH    = costBasis > 0 ? (pnl / costBasis) * 100 : 0
@@ -142,17 +257,14 @@ export default function InvestmentsPage() {
                             return (
                               <tr key={h.id} className="border-b last:border-0 hover:bg-accent/20 transition-colors">
                                 <td className="px-5 py-3">
-                                  <p className="font-medium">{h.name}</p>
-                                  {h.ticker && <p className="text-xs text-muted-foreground uppercase">{h.ticker}</p>}
+                                  <p className="font-medium">{asset?.name ?? '—'}</p>
+                                  {asset?.ticker && <p className="text-xs text-muted-foreground uppercase">{asset.ticker}</p>}
                                 </td>
                                 <td className="px-4 py-3 text-right tabular-nums">
                                   {h.quantity % 1 === 0 ? h.quantity.toFixed(0) : h.quantity.toFixed(4)}
                                 </td>
                                 <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                                   {formatMoney(h.avgCost, account.currency)}
-                                </td>
-                                <td className="px-4 py-3 text-right tabular-nums">
-                                  {formatMoney(h.currentPrice, account.currency)}
                                 </td>
                                 <td className="px-4 py-3 text-right tabular-nums font-medium">
                                   {formatMoney(marketVal, account.currency)}
@@ -171,14 +283,14 @@ export default function InvestmentsPage() {
                                     <button
                                       type="button"
                                       className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                                      onClick={() => openEdit(h)}
+                                      onClick={() => openEditHolding(h)}
                                     >
                                       <Pencil className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                       type="button"
                                       className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                                      onClick={() => { void handleDelete(h) }}
+                                      onClick={() => { void handleDeleteHolding(h) }}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
@@ -188,11 +300,10 @@ export default function InvestmentsPage() {
                             )
                           })}
                         </tbody>
-                        {/* Totals row */}
                         {accountHoldings.length > 1 && (
                           <tfoot>
                             <tr className="border-t bg-muted/20 text-sm font-semibold">
-                              <td className="px-5 py-2.5 text-muted-foreground" colSpan={4}>Total</td>
+                              <td className="px-5 py-2.5 text-muted-foreground" colSpan={3}>Total</td>
                               <td className="px-4 py-2.5 text-right tabular-nums">{formatMoney(totalMarketValue, account.currency)}</td>
                               <td className="px-4 py-2.5 text-right tabular-nums">
                                 <span className={totalPnL >= 0 ? 'text-emerald-600' : 'text-red-500'}>
@@ -207,12 +318,19 @@ export default function InvestmentsPage() {
                     </div>
                   )}
 
-                  {/* Add holding button */}
-                  <div className="px-5 py-3 border-t bg-muted/10">
-                    <Button variant="outline" size="sm" onClick={() => openAdd(account.id!)}>
+                  <div className="px-5 py-3 border-t bg-muted/10 flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAddHolding(account.id!)}
+                      disabled={assets.length === 0}
+                    >
                       <Plus className="h-3.5 w-3.5 mr-1.5" />
                       {t('investments.addHolding')}
                     </Button>
+                    {assets.length === 0 && (
+                      <span className="text-xs text-muted-foreground">{t('investments.addAssetsFirst')}</span>
+                    )}
                   </div>
                 </div>
               )}
@@ -221,13 +339,13 @@ export default function InvestmentsPage() {
         })
       )}
 
-      {/* Portfolio summary */}
+      {/* ── Portfolio summary ───────────────────────────────────────────── */}
       {investmentAccounts.length > 0 && holdings.length > 0 && (() => {
-        const totalPortfolio  = holdings.reduce((s, h) => s + h.quantity * h.currentPrice, 0)
-        const totalCost       = holdings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
-        const totalPnL        = totalPortfolio - totalCost
-        const totalPnLPct     = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
-        const totalInvBase    = investmentAccounts.reduce((s, a) => s + (a.investedBase ?? 0), 0)
+        const totalPortfolio = holdings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
+        const totalCost      = holdings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
+        const totalPnL       = totalPortfolio - totalCost
+        const totalPnLPct    = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+        const totalInvBase   = investmentAccounts.reduce((s, a) => s + (a.investedBase ?? 0), 0)
         return (
           <div className="rounded-xl border bg-card shadow-sm p-5">
             <p className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Portfolio Total</p>
@@ -259,12 +377,18 @@ export default function InvestmentsPage() {
         )
       })()}
 
-      {/* Modal */}
+      {/* Modals */}
       <HoldingFormModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        open={holdingModalOpen}
+        onClose={() => setHoldingModalOpen(false)}
         accountId={modalAccount}
         holding={editHolding}
+        assets={assets}
+      />
+      <AssetFormModal
+        open={assetModalOpen}
+        onClose={() => setAssetModalOpen(false)}
+        asset={editAsset}
       />
     </div>
   )

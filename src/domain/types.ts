@@ -25,16 +25,22 @@ export interface Account {
   investedBase?: number    // total capital invested (cost basis), in cents — investment accounts only
 }
 
-// ---- Holdings (investment portfolio tracking) --------------------------
+// ---- Assets & Holdings (investment portfolio tracking) -----------------
+
+export interface Asset {
+  id?: number
+  name: string           // e.g. "VWCE ETF", "Apple Inc."
+  ticker?: string        // e.g. "VWCE", "AAPL"
+  currentPrice: number   // cents per unit (manually updated market price)
+  createdAt: string
+}
 
 export interface Holding {
   id?: number
   accountId: number
-  name: string           // e.g. "VWCE ETF", "Apple Inc."
-  ticker?: string        // e.g. "VWCE", "AAPL"
+  assetId: number        // FK → assets.id
   quantity: number       // number of units/shares (decimal)
   avgCost: number        // cents per unit (average cost basis)
-  currentPrice: number   // cents per unit (manually updated market price)
   createdAt: string
 }
 

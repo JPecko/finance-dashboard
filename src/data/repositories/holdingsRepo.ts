@@ -5,24 +5,20 @@ type HoldingRow = {
   id: number
   user_id: string
   account_id: number
-  name: string
-  ticker: string | null
+  asset_id: number
   quantity: number
   avg_cost: number
-  current_price: number
   created_at: string
 }
 
 function toHolding(row: HoldingRow): Holding {
   return {
-    id:           row.id,
-    accountId:    row.account_id,
-    name:         row.name,
-    ticker:       row.ticker ?? undefined,
-    quantity:     Number(row.quantity),
-    avgCost:      row.avg_cost,
-    currentPrice: row.current_price,
-    createdAt:    row.created_at,
+    id:        row.id,
+    accountId: row.account_id,
+    assetId:   row.asset_id,
+    quantity:  Number(row.quantity),
+    avgCost:   row.avg_cost,
+    createdAt: row.created_at,
   }
 }
 
@@ -31,7 +27,7 @@ export const holdingsRepo = {
     const { data, error } = await supabase
       .from('holdings')
       .select('*')
-      .order('name')
+      .order('asset_id')
     if (error) throw error
     return (data as HoldingRow[]).map(toHolding)
   },
@@ -41,7 +37,7 @@ export const holdingsRepo = {
       .from('holdings')
       .select('*')
       .eq('account_id', accountId)
-      .order('name')
+      .order('asset_id')
     if (error) throw error
     return (data as HoldingRow[]).map(toHolding)
   },
@@ -50,12 +46,10 @@ export const holdingsRepo = {
     const { data, error } = await supabase
       .from('holdings')
       .insert({
-        account_id:    holding.accountId,
-        name:          holding.name,
-        ticker:        holding.ticker ?? null,
-        quantity:      holding.quantity,
-        avg_cost:      holding.avgCost,
-        current_price: holding.currentPrice,
+        account_id: holding.accountId,
+        asset_id:   holding.assetId,
+        quantity:   holding.quantity,
+        avg_cost:   holding.avgCost,
       })
       .select()
       .single()
@@ -65,11 +59,9 @@ export const holdingsRepo = {
 
   update: async (id: number, changes: Partial<Holding>): Promise<void> => {
     const row: Record<string, unknown> = {}
-    if (changes.name         !== undefined) row.name          = changes.name
-    if (changes.ticker       !== undefined) row.ticker        = changes.ticker ?? null
-    if (changes.quantity     !== undefined) row.quantity      = changes.quantity
-    if (changes.avgCost      !== undefined) row.avg_cost      = changes.avgCost
-    if (changes.currentPrice !== undefined) row.current_price = changes.currentPrice
+    if (changes.assetId  !== undefined) row.asset_id = changes.assetId
+    if (changes.quantity !== undefined) row.quantity  = changes.quantity
+    if (changes.avgCost  !== undefined) row.avg_cost  = changes.avgCost
     const { error } = await supabase.from('holdings').update(row).eq('id', id)
     if (error) throw error
   },
@@ -79,11 +71,6 @@ export const holdingsRepo = {
     if (error) throw error
   },
 
-  /**
-   * Recalculates quantity and avg_cost for a holding based on all linked transactions.
-   * - Income transactions (buy): add units, compute weighted avg cost
-   * - Expense transactions (sell): subtract units
-   */
   recalculate: async (holdingId: number): Promise<void> => {
     const { data } = await supabase
       .from('transactions')

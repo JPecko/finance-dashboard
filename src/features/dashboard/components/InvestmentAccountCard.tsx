@@ -1,6 +1,6 @@
 import {
-  AreaChart, Area, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip as ReTooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import BankLogo from '@/shared/components/BankLogo'
@@ -8,35 +8,42 @@ import { BANK_OPTIONS } from '@/shared/config/banks'
 import { useInvestmentAccountHistory } from '@/shared/hooks/useTransactions'
 import { formatMoney, fromCents } from '@/domain/money'
 import { useT } from '@/shared/i18n'
-import type { Account } from '@/domain/types'
+import type { Account, Asset, Holding } from '@/domain/types'
 
 const axisFmt = (v: number) => {
   if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(0)}k`
   return String(v)
 }
 
-export default function InvestmentAccountCard({ account }: { account: Account }) {
-  const t    = useT()
-  const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
+interface Props {
+  account:  Account
+  holdings: Holding[]
+  assets:   Asset[]
+}
+
+export default function InvestmentAccountCard({ account, holdings, assets }: Props) {
+  const t        = useT()
+  const bank     = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
+  const assetMap = Object.fromEntries(assets.map(a => [a.id!, a]))
   const { data = [] } = useInvestmentAccountHistory(account)
 
-  // Build cumulative invested (cost basis) per month
-  let cum = 0
-  const chartData = data.map(d => {
-    cum += d.invested
-    return {
-      month:     d.month,
-      costBasis: Math.round(fromCents(cum) * 100) / 100,
-      value:     Math.round(fromCents(d.balance) * 100) / 100,
-    }
-  })
+  // Cost basis and market value derived exclusively from holdings
+  const costBasisCents   = holdings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
+  const marketValueCents = holdings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
+  const hasHoldings     = holdings.length > 0
 
-  // P&L: use investedBase if set, otherwise derive from chart window
-  const totalInvestedFromChart = data.reduce((s, d) => s + d.invested, 0)
-  const costBasisCents = account.investedBase ?? totalInvestedFromChart
-  const pnl            = account.balance - costBasisCents
-  const pnlPct         = costBasisCents > 0 ? (pnl / costBasisCents) * 100 : 0
-  const isPositive     = pnl >= 0
+  // P&L on holdings
+  const pnl        = marketValueCents - costBasisCents
+  const pnlPct     = costBasisCents > 0 ? (pnl / costBasisCents) * 100 : 0
+  const isPositive = pnl >= 0
+
+  // Chart: account balance over time (monthly)
+  // Cost basis is a horizontal reference line (current snapshot)
+  const chartData = data.map(d => ({
+    month:   d.month,
+    balance: Math.round(fromCents(d.balance) * 100) / 100,
+  }))
+  const costBasisRef = Math.round(fromCents(costBasisCents) * 100) / 100
 
   return (
     <Card>
@@ -58,41 +65,57 @@ export default function InvestmentAccountCard({ account }: { account: Account })
             <CardTitle className="text-sm font-medium truncate">{account.name}</CardTitle>
           </div>
 
-          {/* Right: balance + P&L */}
+          {/* Right: account balance */}
           <div className="text-right shrink-0">
             <p className="text-lg font-bold tabular-nums">{formatMoney(account.balance)}</p>
-            {costBasisCents > 0 && (
-              <p className={`text-xs tabular-nums font-medium ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {isPositive ? '+' : ''}{formatMoney(pnl)}
-                <span className="ml-1 opacity-70">({isPositive ? '+' : ''}{pnlPct.toFixed(1)}%)</span>
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground">{t('accounts.title')}</p>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
-        {/* Stats row */}
-        <div className="flex items-center gap-4 mb-3 px-1">
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('investments.costBasis')}</p>
-            <p className="text-sm font-semibold tabular-nums">{formatMoney(costBasisCents)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('investments.marketValue')}</p>
-            <p className="text-sm font-semibold tabular-nums">{formatMoney(account.balance)}</p>
-          </div>
-        </div>
+      <CardContent className="pt-0 space-y-3">
 
-        {/* Chart: cumulative cost basis (area) vs portfolio value (line) */}
-        <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id={`grad-${account.id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={account.color} stopOpacity={0.25} />
-                <stop offset="95%" stopColor={account.color} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
+        {/* Stats: 3 concepts side by side */}
+        {hasHoldings ? (
+          <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted/30 px-3 py-2.5">
+            {/* Capital Investido — deposits */}
+            {account.investedBase != null && (
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight">
+                  {t('investments.investedBase')}
+                </p>
+                <p className="text-sm font-semibold tabular-nums">{formatMoney(account.investedBase)}</p>
+                <p className="text-[10px] text-muted-foreground">depósitos</p>
+              </div>
+            )}
+            {/* Custo Base — what you paid for the assets */}
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight">
+                {t('investments.costBasis')}
+              </p>
+              <p className="text-sm font-semibold tabular-nums">{formatMoney(costBasisCents)}</p>
+              <p className="text-[10px] text-muted-foreground">preço pago</p>
+            </div>
+            {/* Valor de Mercado */}
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight">
+                {t('investments.marketValue')}
+              </p>
+              <p className="text-sm font-semibold tabular-nums">{formatMoney(marketValueCents)}</p>
+              <p className={`text-[10px] font-medium ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {isPositive ? '+' : ''}{formatMoney(pnl)} ({isPositive ? '+' : ''}{pnlPct.toFixed(1)}%)
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground px-1">
+            {t('investments.noHoldings')} — {t('investments.addHolding').toLowerCase()} na página de investimentos.
+          </p>
+        )}
+
+        {/* Chart: account balance over time + cost basis reference */}
+        <ResponsiveContainer width="100%" height={150}>
+          <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               dataKey="month"
@@ -114,42 +137,42 @@ export default function InvestmentAccountCard({ account }: { account: Account })
               ]}
               contentStyle={{ fontSize: 12 }}
             />
-            {/* Area: cumulative cost basis */}
-            <Area
-              type="monotone"
-              dataKey="costBasis"
-              name={t('investments.costBasis')}
-              stroke={account.color}
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
-              fill={`url(#grad-${account.id})`}
-              dot={false}
-            />
-            {/* Line: portfolio market value */}
+            {/* Horizontal reference line: current cost basis */}
+            {hasHoldings && costBasisRef > 0 && (
+              <ReferenceLine
+                y={costBasisRef}
+                stroke={account.color}
+                strokeDasharray="5 4"
+                strokeWidth={1.5}
+                label={{ value: t('investments.costBasis'), position: 'insideTopRight', fontSize: 9, fill: 'var(--muted-foreground)' }}
+              />
+            )}
+            {/* Line: account balance over time */}
             <Line
               type="monotone"
-              dataKey="value"
-              name={t('investments.marketValue')}
+              dataKey="balance"
+              name={t('dashboard.portfolioValue')}
               stroke={account.color}
               strokeWidth={2.5}
               dot={false}
-              strokeOpacity={1}
             />
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-5 mt-2">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <svg width="16" height="8">
-              <line x1="0" y1="4" x2="16" y2="4" stroke={account.color} strokeWidth="1.5" strokeDasharray="4 3" />
-            </svg>
-            {t('investments.costBasis')}
-          </div>
+        <div className="flex items-center justify-center gap-5">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="block h-0.5 w-4 rounded shrink-0" style={{ backgroundColor: account.color }} />
-            {t('investments.marketValue')}
+            {t('dashboard.portfolioValue')}
           </div>
+          {hasHoldings && costBasisRef > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <svg width="16" height="8">
+                <line x1="0" y1="4" x2="16" y2="4" stroke={account.color} strokeWidth="1.5" strokeDasharray="5 4" />
+              </svg>
+              {t('investments.costBasis')}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

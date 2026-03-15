@@ -15,6 +15,7 @@ import { toCents, fromCents } from '@/domain/money'
 import { addTransaction } from '@/shared/hooks/useTransactions'
 import { useSortedAccounts } from '@/shared/hooks/useAccounts'
 import { useHoldingsByAccount } from '@/shared/hooks/useHoldings'
+import { useAssets } from '@/shared/hooks/useAssets'
 import { useGroups, addGroupEntry, updateGroupEntry } from '@/shared/hooks/useGroups'
 import { groupsRepo } from '@/data/repositories/groupsRepo'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -163,6 +164,8 @@ export default function TransactionFormModal({
   const isInvestmentAccount = selectedAccount?.type === 'investment' && !isTransfer
   const investAccountId = isInvestmentAccount && selectedAccount?.id != null ? selectedAccount.id : undefined
   const { data: accountHoldings = [] } = useHoldingsByAccount(investAccountId)
+  const { data: allAssets        = [] } = useAssets()
+  const assetMap = Object.fromEntries(allAssets.map(a => [a.id!, a]))
 
   // ── Load linked group entry when editing a transaction or SE ────────────
   useEffect(() => {
@@ -860,11 +863,14 @@ export default function TransactionFormModal({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">{t('investments.noLink')}</SelectItem>
-                        {accountHoldings.map(h => (
-                          <SelectItem key={h.id} value={String(h.id)}>
-                            {h.name}{h.ticker ? ` (${h.ticker.toUpperCase()})` : ''}
-                          </SelectItem>
-                        ))}
+                        {accountHoldings.map(h => {
+                          const asset = assetMap[h.assetId]
+                          return (
+                            <SelectItem key={h.id} value={String(h.id)}>
+                              {asset?.name ?? `Holding #${h.id}`}{asset?.ticker ? ` (${asset.ticker.toUpperCase()})` : ''}
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

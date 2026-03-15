@@ -25,6 +25,8 @@ import BankLogo from '@/shared/components/BankLogo'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import { useTransactionsFilterStore } from '@/shared/store/transactionsFilterStore'
 import InvestmentAccountCard from '../components/InvestmentAccountCard'
+import { useHoldings } from '@/shared/hooks/useHoldings'
+import { useAssets } from '@/shared/hooks/useAssets'
 import GroupsWidget from '../components/GroupsWidget'
 import { useT } from '@/shared/i18n'
 
@@ -140,7 +142,9 @@ export default function DashboardPage() {
     navigate('/transactions')
   }
 
-  // Investment accounts
+  // Investment accounts + holdings + assets
+  const { data: allHoldings = [] } = useHoldings()
+  const { data: allAssets   = [] } = useAssets()
   const investmentAccounts = accounts.filter(a => a.type === 'investment')
 
   // Savings rate
@@ -527,7 +531,12 @@ export default function DashboardPage() {
           </p>
           <div className={`grid gap-4 ${investmentAccounts.length > 1 ? 'lg:grid-cols-2' : ''}`}>
             {investmentAccounts.map(acc => (
-              <InvestmentAccountCard key={acc.id} account={acc} />
+              <InvestmentAccountCard
+                key={acc.id}
+                account={acc}
+                holdings={allHoldings.filter(h => h.accountId === acc.id)}
+                assets={allAssets}
+              />
             ))}
           </div>
         </div>

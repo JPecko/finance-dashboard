@@ -30,7 +30,10 @@ export const queryKeys = {
     splits:  (entryId: number) => ['groups', 'splits', entryId] as const,
   },
   holdings: {
-    all:       ()                => ['holdings']                    as const,
+    all:       ()                  => ['holdings']                         as const,
     byAccount: (accountId: number) => ['holdings', 'byAccount', accountId] as const,
+  },
+  assets: {
+    all: () => ['assets'] as const,
   },
 } as const
