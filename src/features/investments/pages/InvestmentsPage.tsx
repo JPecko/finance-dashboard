@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { TrendingUp, TrendingDown, Plus, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
+import BankLogo from '@/shared/components/BankLogo'
+import { BANK_OPTIONS } from '@/shared/config/banks'
 import { useAccounts } from '@/shared/hooks/useAccounts'
 import { useHoldings, removeHolding } from '@/shared/hooks/useHoldings'
 import { useAssets, removeAsset, updateAsset } from '@/shared/hooks/useAssets'
@@ -183,6 +185,8 @@ export default function InvestmentsPage() {
           const pnlPct           = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0
           const isOpen           = expanded[account.id!] !== false
 
+          const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
+
           return (
             <div key={account.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
               {/* Account header */}
@@ -191,10 +195,22 @@ export default function InvestmentsPage() {
                 className="w-full flex items-center gap-4 px-5 py-4 hover:bg-accent/30 transition-colors text-left"
                 onClick={() => toggleExpand(account.id!)}
               >
-                <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: account.color }} />
+                {bank ? (
+                  <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <BankLogo
+                      domain={bank.logoDomain}
+                      name={bank.name}
+                      accountType={account.type}
+                      imgClassName="h-5 w-5 object-contain"
+                      iconClassName="h-4 w-4 text-muted-foreground"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-3 w-3 rounded-full shrink-0 ml-3" style={{ backgroundColor: account.color }} />
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-base truncate">{account.name}</p>
-                  <p className="text-xs text-muted-foreground">{account.currency}</p>
+                  <p className="text-xs text-muted-foreground">{bank ? bank.name : account.currency}</p>
                 </div>
 
                 <div className="hidden sm:flex items-center gap-6 text-sm shrink-0">
