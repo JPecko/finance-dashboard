@@ -86,9 +86,9 @@ export default function PlainSelect({
         className={cn(triggerClasses, !selectedOption && 'text-muted-foreground')}
         onClick={() => setOpen(prev => !prev)}
       >
-        <span className="min-w-0 flex-1 truncate">
+        <div key={selectedOption?.value ?? 'placeholder'} className="min-w-0 flex-1">
           {selectedOption?.selectedContent ?? selectedOption?.content ?? selectedOption?.label ?? placeholder}
-        </span>
+        </div>
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
 
@@ -110,7 +110,7 @@ export default function PlainSelect({
                   className={optionClasses}
                   onClick={() => handleSelect(option.value)}
                 >
-                  <span className="min-w-0 flex-1">{option.content ?? option.label}</span>
+                  <div className="min-w-0 flex-1">{option.content ?? option.label}</div>
                   <Check className={cn('h-4 w-4 shrink-0 text-primary', !isSelected && 'invisible')} />
                 </button>
               )

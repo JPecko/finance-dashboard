@@ -282,7 +282,7 @@ export default function TransactionsPage() {
       ) : (
         <div className="rounded-lg border overflow-hidden">
           <div
-            className={`hidden md:grid ${TRANSACTIONS_GRID_COLS} gap-x-3 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border`}
+            className={`hidden lg:grid ${TRANSACTIONS_GRID_COLS} gap-x-3 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40 border-b border-border`}
           >
             <span>{t('transactions.colDate')}</span>
             <span>{t('transactions.colDescription')}</span>

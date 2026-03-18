@@ -13,6 +13,9 @@ export const queryKeys = {
     all:     ()                              => ['transactions']                        as const,
     byMonth: (year: number, month: number)  => ['transactions', 'byMonth', year, month] as const,
     netFlow: (year: number, month: number)  => ['transactions', 'netFlow', year, month] as const,
+    investmentHistory: (accountId: number, year: number, month: number, months: number) =>
+      ['transactions', 'investmentHistory', accountId, year, month, months] as const,
+    capitalAdjustments: (accountIdsKey: string) => ['transactions', 'capitalAdjustments', accountIdsKey] as const,
   },
   rules: {
     all: () => ['rules'] as const,

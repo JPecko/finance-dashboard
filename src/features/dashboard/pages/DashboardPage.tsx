@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { useSortedAccounts, useNetWorth } from '@/shared/hooks/useAccounts'
 import { useMonthSummary, useTransactionsByMonth, useMonthlyNetFlow, useMonthlyBenefits, useYearBenefits, isCashFlow, personalDivisorFor } from '@/shared/hooks/useTransactions'
+import { useInvestmentCapitalAdjustments } from '@/shared/hooks/useTransactions'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useSharedExpensesByMonth } from '@/shared/hooks/useSharedExpenses'
 import { formatMoney } from '@/domain/money'
@@ -24,11 +25,12 @@ import PageLoader from '@/shared/components/PageLoader'
 import BankLogo from '@/shared/components/BankLogo'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import { useTransactionsFilterStore } from '@/shared/store/transactionsFilterStore'
-import InvestmentAccountCard, { computeInvestmentBalance } from '../components/InvestmentAccountCard'
+import InvestmentAccountCard from '../components/InvestmentAccountCard'
 import { useHoldings } from '@/shared/hooks/useHoldings'
 import { useAssets } from '@/shared/hooks/useAssets'
 import GroupsWidget from '../components/GroupsWidget'
 import { useT } from '@/shared/i18n'
+import { computeInvestmentBalance } from '@/features/investments/utils/investmentMetrics'
 
 const now   = new Date()
 const YEAR  = getYear(now)
@@ -99,13 +101,16 @@ export default function DashboardPage() {
   const { data: allHoldings = [] } = useHoldings()
   const { data: allAssets   = [] } = useAssets()
   const investmentAccounts = accounts.filter(a => a.type === 'investment')
+  const investmentAccountIds = investmentAccounts.map(account => account.id!).filter(Boolean)
+  const { data: capitalAdjustments = {} } = useInvestmentCapitalAdjustments(investmentAccountIds)
 
   // Compute effective balance per account: investment accounts use calculated value
   const allAssetMap = Object.fromEntries(allAssets.map(a => [a.id!, a]))
   function effectiveBalance(account: typeof accounts[0]): number {
     if (account.type !== 'investment') return account.balance
     const accountHoldings = allHoldings.filter(h => h.accountId === account.id)
-    return computeInvestmentBalance(account, accountHoldings, allAssetMap)
+    const capitalTransactions = [{ accountId: account.id!, amount: capitalAdjustments[account.id!] ?? 0, category: 'capital' } as unknown as import('@/domain/types').Transaction]
+    return computeInvestmentBalance(account, accountHoldings, allAssetMap, capitalTransactions)
   }
 
   // Net worth breakdown by account type (investment accounts use computed balance)

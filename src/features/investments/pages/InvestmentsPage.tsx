@@ -4,13 +4,16 @@ import { Button } from '@/shared/components/ui/button'
 import BankLogo from '@/shared/components/BankLogo'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import { useAccounts } from '@/shared/hooks/useAccounts'
+import { useInvestmentCapitalAdjustments } from '@/shared/hooks/useTransactions'
 import { useHoldings, removeHolding } from '@/shared/hooks/useHoldings'
 import { useAssets, removeAsset, updateAsset } from '@/shared/hooks/useAssets'
 import { formatMoney, toCents, fromCents } from '@/domain/money'
 import { useT } from '@/shared/i18n'
+import GeneralAssetsSection from '../components/GeneralAssetsSection'
 import HoldingFormModal from '../components/HoldingFormModal'
 import AssetFormModal from '../components/AssetFormModal'
 import AccountFormModal from '@/features/accounts/components/AccountFormModal'
+import { computeInvestmentBalance, computeMarketValue } from '../utils/investmentMetrics'
 import type { Asset, Holding, Account } from '@/domain/types'
 
 export default function InvestmentsPage() {
@@ -35,6 +38,8 @@ export default function InvestmentsPage() {
 
   const investmentAccounts = accounts.filter(a => a.type === 'investment')
   const assetMap = Object.fromEntries(assets.map(a => [a.id!, a]))
+  const investmentAccountIds = investmentAccounts.flatMap(account => (account.id != null ? [account.id] : []))
+  const { data: capitalAdjustments = {} } = useInvestmentCapitalAdjustments(investmentAccountIds)
 
   const openAddHolding = (accountId: number) => {
     setEditHolding(undefined)
@@ -90,94 +95,18 @@ export default function InvestmentsPage() {
         <p className="text-muted-foreground text-sm mt-1">{t('investments.subtitle')}</p>
       </div>
 
-      {/* ── Assets section ─────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">{t('investments.assets')}</h2>
-          <Button variant="outline" size="sm" onClick={openAddAsset}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            {t('investments.addAsset')}
-          </Button>
-        </div>
-
-        {assets.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">{t('investments.noAssets')}</p>
-          </div>
-        ) : (
-          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                  <th className="px-5 py-2.5 text-left font-medium">{t('investments.assetName')}</th>
-                  <th className="px-4 py-2.5 text-left font-medium">{t('investments.ticker')}</th>
-                  <th className="px-4 py-2.5 text-right font-medium">{t('investments.currentPrice')}</th>
-                  <th className="px-4 py-2.5 w-16" />
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map(asset => {
-                  const currentEditingPrice = editingPrice?.assetId === asset.id ? editingPrice : null
-                  const isEditingPrice = currentEditingPrice != null
-                  const editingPriceValue = currentEditingPrice?.value ?? ''
-
-                  return (
-                  <tr key={asset.id} className="border-b last:border-0 hover:bg-accent/20 transition-colors">
-                    <td className="px-5 py-3 font-medium">{asset.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground uppercase text-xs">{asset.ticker ?? '—'}</td>
-                    <td
-                      className="px-4 py-3 text-right tabular-nums cursor-pointer group"
-                      onClick={() => startEditPrice(asset)}
-                      title="Click to update price"
-                    >
-                      {isEditingPrice ? (
-                        <input
-                          ref={priceInputRef}
-                          type="number"
-                          step="0.0001"
-                          min="0"
-                          className="w-28 text-right tabular-nums bg-background border border-primary rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                          value={editingPriceValue}
-                          onChange={e => setEditingPrice(prev => prev ? { ...prev, value: e.target.value } : null)}
-                          onBlur={() => { void commitEditPrice(asset) }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter')  { e.currentTarget.blur() }
-                            if (e.key === 'Escape') { setEditingPrice(null) }
-                          }}
-                          onClick={e => e.stopPropagation()}
-                        />
-                      ) : (
-                        <span className="group-hover:underline group-hover:decoration-dotted">
-                          {formatMoney(asset.currentPrice)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button
-                          type="button"
-                          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                          onClick={() => openEditAsset(asset)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          onClick={() => { void handleDeleteAsset(asset) }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <GeneralAssetsSection
+        assets={assets}
+        editingPrice={editingPrice}
+        priceInputRef={priceInputRef}
+        onAddAsset={openAddAsset}
+        onEditAsset={openEditAsset}
+        onDeleteAsset={asset => { void handleDeleteAsset(asset) }}
+        onStartEditPrice={startEditPrice}
+        onPriceChange={value => setEditingPrice(prev => (prev ? { ...prev, value } : null))}
+        onCommitEditPrice={asset => { void commitEditPrice(asset) }}
+        onCancelEditPrice={() => setEditingPrice(null)}
+      />
 
       {/* ── Per-account holdings ────────────────────────────────────────── */}
       {investmentAccounts.length === 0 ? (
@@ -189,13 +118,18 @@ export default function InvestmentsPage() {
       ) : (
         investmentAccounts.map(account => {
           const accountHoldings  = holdings.filter(h => h.accountId === account.id)
-          const totalMarketValue = accountHoldings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
+          const capitalAmount    = account.id != null ? (capitalAdjustments[account.id] ?? 0) : 0
+          const capitalTransactions = account.id != null && capitalAmount !== 0
+            ? [{ accountId: account.id, amount: capitalAmount, category: 'capital' } as unknown as import('@/domain/types').Transaction]
+            : []
+          const totalMarketValue = computeMarketValue(accountHoldings, assetMap)
           const totalCostBasis   = accountHoldings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
           const totalFees        = (account.entryFee ?? 0) * accountHoldings.length
           const adjCostBasis     = totalCostBasis + totalFees
           const totalPnL         = totalMarketValue - adjCostBasis
           const pnlPct           = adjCostBasis > 0 ? (totalPnL / adjCostBasis) * 100 : 0
-          const isOpen           = expanded[account.id!] !== false
+          const portfolioBalance = computeInvestmentBalance(account, accountHoldings, assetMap, capitalTransactions)
+          const isOpen           = expanded[account.id!] === true
 
           const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
 
@@ -227,11 +161,15 @@ export default function InvestmentsPage() {
                   <p className="text-xs text-muted-foreground">{bank ? bank.name : account.currency}</p>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-6 text-sm shrink-0">
+                <div className="hidden lg:flex items-center gap-6 text-sm shrink-0">
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">{t('dashboard.portfolioValue')}</p>
+                    <p className="font-semibold tabular-nums">{formatMoney(portfolioBalance, account.currency)}</p>
+                  </div>
                   {account.investedBase != null && (
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">{t('investments.investedBase')}</p>
-                      <p className="font-medium tabular-nums">{formatMoney(account.investedBase, account.currency)}</p>
+                      <p className="font-medium tabular-nums">{formatMoney((account.investedBase ?? 0) + capitalAmount, account.currency)}</p>
                     </div>
                   )}
                   <div className="text-right">
@@ -260,6 +198,34 @@ export default function InvestmentsPage() {
                 {isOpen
                   ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
                   : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+              </div>
+
+              <div className="border-t bg-muted/10 px-5 py-3 lg:hidden">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg bg-background px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">{t('dashboard.portfolioValue')}</p>
+                    <p className="font-semibold tabular-nums">{formatMoney(portfolioBalance, account.currency)}</p>
+                  </div>
+                  <div className="rounded-lg bg-background px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">{t('investments.marketValue')}</p>
+                    <p className="font-medium tabular-nums">{formatMoney(totalMarketValue, account.currency)}</p>
+                  </div>
+                  <div className="rounded-lg bg-background px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">{t('investments.investedBase')}</p>
+                    <p className="font-medium tabular-nums">{formatMoney((account.investedBase ?? 0) + capitalAmount, account.currency)}</p>
+                  </div>
+                  <div className="rounded-lg bg-background px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">{t('investments.pnl')}</p>
+                    <p className={`font-semibold tabular-nums ${totalPnL >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {totalPnL >= 0 ? '+' : ''}{formatMoney(totalPnL, account.currency)}
+                    </p>
+                    {accountHoldings.length > 0 && (
+                      <p className={`text-[11px] ${totalPnL >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Holdings table */}

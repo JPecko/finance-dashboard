@@ -8,6 +8,7 @@ import { queryKeys } from '@/data/queryKeys'
 import { useAccounts } from '@/shared/hooks/useAccounts'
 import { useSharedExpensesByMonth } from '@/shared/hooks/useSharedExpenses'
 import { useAuth } from '@/features/auth/AuthContext'
+import { effectOnInvestmentAccount } from '@/features/investments/utils/investmentMetrics'
 import type { Transaction, Account } from '@/domain/types'
 
 // ─── Queries ────────────────────────────────────────────────────────────────
@@ -16,6 +17,68 @@ export function useTransactionsByMonth(year: number, month: number) {
   return useQuery({
     queryKey: queryKeys.transactions.byMonth(year, month),
     queryFn:  () => transactionsRepo.getByMonth(year, month),
+  })
+}
+
+export function useInvestmentCapitalAdjustments(accountIds: number[]) {
+  const accountIdsKey = accountIds.slice().sort((a, b) => a - b).join(',')
+
+  return useQuery({
+    queryKey: queryKeys.transactions.capitalAdjustments(accountIdsKey),
+    enabled: accountIds.length > 0,
+    queryFn: async () => {
+      const clauses = accountIds.flatMap(id => [`account_id.eq.${id}`, `to_account_id.eq.${id}`])
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('category', 'capital')
+        .or(clauses.join(','))
+
+      if (error) throw error
+
+      const txs = (data ?? []) as {
+        id: number
+        account_id: number
+        to_account_id: number | null
+        amount: number
+        type: string
+        category: string
+        description: string
+        date: string
+        recurring_rule_id: number | null
+        is_personal: boolean
+        split_n: number | null
+        is_reimbursable: boolean
+        personal_user_id: string | null
+        holding_id: number | null
+        units: number | null
+        created_at: string
+      }[]
+
+      const mapped = txs.map(tx => ({
+        id: tx.id,
+        accountId: tx.account_id,
+        toAccountId: tx.to_account_id ?? undefined,
+        amount: tx.amount,
+        type: tx.type as Transaction['type'],
+        category: tx.category,
+        description: tx.description,
+        date: tx.date,
+        recurringRuleId: tx.recurring_rule_id ?? undefined,
+        isPersonal: tx.is_personal ?? false,
+        splitN: tx.split_n ?? null,
+        isReimbursable: tx.is_reimbursable ?? false,
+        personalUserId: tx.personal_user_id ?? undefined,
+        holdingId: tx.holding_id ?? undefined,
+        units: tx.units ?? undefined,
+        createdAt: tx.created_at,
+      }) satisfies Transaction)
+
+      return Object.fromEntries(accountIds.map(accountId => [
+        accountId,
+        mapped.reduce((sum, tx) => sum + effectOnInvestmentAccount(tx, accountId), 0),
+      ]))
+    },
   })
 }
 
@@ -333,7 +396,7 @@ export function useInvestmentAccountHistory(account: Account, months = 12) {
   const startStr = format(new Date(year, month - months, 1), 'yyyy-MM-dd')
 
   return useQuery({
-    queryKey: ['investment-history', account.id, year, month],
+    queryKey: queryKeys.transactions.investmentHistory(account.id!, year, month, months),
     queryFn: async () => {
       const { data } = await supabase
         .from('transactions')
@@ -358,11 +421,10 @@ export function useInvestmentAccountHistory(account: Account, months = 12) {
         const monthKey = format(d, 'yyyy-MM')
         const nextStr  = format(new Date(d.getFullYear(), d.getMonth() + 1, 1), 'yyyy-MM-dd')
 
-        // Sum of positive inflows this month = new money invested
-        // Excludes: revaluations (market updates) + 'investment' category (Investment Return — dividends, etc.)
+        // Capital invested this month comes only from explicit capital-movement transactions.
         const invested = txs
-          .filter(tx => tx.date.startsWith(monthKey) && tx.type !== 'revaluation' && tx.category !== 'investment')
-          .reduce((s, tx) => { const e = effectOn(tx); return e > 0 ? s + e : s }, 0)
+          .filter(tx => tx.date.startsWith(monthKey) && tx.category === 'capital')
+          .reduce((s, tx) => s + effectOn(tx), 0)
 
         // Balance at month-end = current balance minus all effects that came AFTER this month
         const laterEffect = txs
@@ -384,6 +446,7 @@ export async function addTransaction(data: Omit<Transaction, 'id' | 'createdAt'>
   const id = await transactionsRepo.add(data)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
+  queryClient.invalidateQueries({ queryKey: queryKeys.holdings.all() })
   queryClient.invalidateQueries({ queryKey: ['benefits'] })
   return id
 }
@@ -392,6 +455,7 @@ export async function updateTransaction(id: number, data: Partial<Transaction>) 
   await transactionsRepo.update(id, data)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
+  queryClient.invalidateQueries({ queryKey: queryKeys.holdings.all() })
   queryClient.invalidateQueries({ queryKey: ['benefits'] })
 }
 
@@ -399,5 +463,6 @@ export async function removeTransaction(id: number) {
   await transactionsRepo.remove(id)
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
+  queryClient.invalidateQueries({ queryKey: queryKeys.holdings.all() })
   queryClient.invalidateQueries({ queryKey: ['benefits'] })
 }

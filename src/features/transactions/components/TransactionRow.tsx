@@ -35,10 +35,10 @@ function AccountPill({ accountId, accountsById }: { accountId: number; accountsB
   )
 }
 
-export const TRANSACTIONS_GRID_COLS = 'md:grid-cols-[54px_1fr_220px_120px_80px_28px]'
+export const TRANSACTIONS_GRID_COLS = 'lg:grid-cols-[54px_1fr_220px_120px_80px_28px]'
 
 const ROW_BASE_CLASS =
-  `relative px-4 py-3 transition-colors group flex items-center gap-3 md:grid ${TRANSACTIONS_GRID_COLS} md:gap-x-3 md:items-center`
+  `relative px-4 py-3 transition-colors group flex items-center gap-3 lg:grid ${TRANSACTIONS_GRID_COLS} lg:gap-x-3 lg:items-center`
 
 interface TransactionRowProps {
   tx: Transaction
@@ -111,8 +111,8 @@ export default function TransactionRow({
     >
       <div className="absolute inset-0 bg-foreground/[0.04] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-      <span className="hidden md:block text-sm text-muted-foreground">{formatDate(tx.date)}</span>
-      <div className="hidden md:flex items-center gap-1.5 min-w-0">
+      <span className="hidden lg:block text-sm text-muted-foreground">{formatDate(tx.date)}</span>
+      <div className="hidden lg:flex items-center gap-1.5 min-w-0">
         <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
         {tx.isReimbursable && (
           <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
@@ -141,12 +141,12 @@ export default function TransactionRow({
           </Badge>
         )}
       </div>
-      <div className="hidden md:block min-w-0">
+      <div className="hidden lg:block min-w-0">
         <div className={transfer ? 'text-sm text-muted-foreground' : 'text-sm text-muted-foreground truncate'}>
           {accountCell}
         </div>
       </div>
-      <div className="hidden md:flex items-center">
+      <div className="hidden lg:flex items-center">
         <Badge
           variant="secondary"
           className="text-xs px-1.5 py-0 h-5 max-w-full truncate"
@@ -156,7 +156,7 @@ export default function TransactionRow({
         </Badge>
       </div>
 
-      <div className="md:hidden flex-1 min-w-0">
+      <div className="lg:hidden flex-1 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
           {tx.isReimbursable && (
@@ -201,7 +201,7 @@ export default function TransactionRow({
         </div>
       </div>
 
-      <div className="shrink-0 md:text-right">
+      <div className="shrink-0 lg:text-right">
         <span className={`block text-sm font-semibold tabular-nums ${amountColor}`}>
           {formatTxAmount(tx)}
         </span>

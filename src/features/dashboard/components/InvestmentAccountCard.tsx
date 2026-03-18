@@ -7,9 +7,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import BankLogo from '@/shared/components/BankLogo'
 import { BANK_OPTIONS } from '@/shared/config/banks'
-import { useInvestmentAccountHistory } from '@/shared/hooks/useTransactions'
+import { useInvestmentAccountHistory, useInvestmentCapitalAdjustments } from '@/shared/hooks/useTransactions'
 import { formatMoney, fromCents } from '@/domain/money'
 import { useT } from '@/shared/i18n'
+import {
+  computeAdjustedCostBasis,
+  computeEffectiveInvestedBase,
+  computeInvestmentBalance,
+  computeMarketValue,
+} from '@/features/investments/utils/investmentMetrics'
 import type { Account, Asset, Holding } from '@/domain/types'
 
 const axisFmt = (v: number) => {
@@ -23,33 +29,25 @@ interface Props {
   assets:   Asset[]
 }
 
-/** Returns the effective portfolio balance for an investment account:
- *  investedBase + (marketValue − adjustedCostBasis)
- *  Falls back to investedBase (or 0) when there are no holdings. */
-export function computeInvestmentBalance(account: Account, holdings: Holding[], assetMap: Record<number, Asset>): number {
-  if (holdings.length === 0) return account.investedBase ?? account.balance
-  const marketValue  = holdings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
-  const costBasis    = holdings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
-  const totalFees    = (account.entryFee ?? 0) * holdings.length
-  const adjustedCost = costBasis + totalFees
-  return (account.investedBase ?? 0) + (marketValue - adjustedCost)
-}
-
 export default function InvestmentAccountCard({ account, holdings, assets }: Props) {
   const t        = useT()
   const navigate = useNavigate()
   const bank     = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
   const assetMap = Object.fromEntries(assets.map(a => [a.id!, a]))
+  const { data: capitalAdjustments = {} } = useInvestmentCapitalAdjustments(account.id != null ? [account.id] : [])
+  const capitalTransactions = account.id != null && capitalAdjustments[account.id] != null
+    ? [{ accountId: account.id, amount: capitalAdjustments[account.id], category: 'capital' } as unknown as import('@/domain/types').Transaction]
+    : []
 
   const hasHoldings      = holdings.length > 0
-  const costBasisCents   = holdings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
-  const marketValueCents = holdings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
+  const marketValueCents = computeMarketValue(holdings, assetMap)
   const totalFees        = (account.entryFee ?? 0) * holdings.length
-  const adjCostBasis     = costBasisCents + totalFees
+  const adjCostBasis     = computeAdjustedCostBasis(account, holdings)
   const pnl              = marketValueCents - adjCostBasis
   const pnlPct           = adjCostBasis > 0 ? (pnl / adjCostBasis) * 100 : 0
   const isPositive       = pnl >= 0
-  const computedBalance  = computeInvestmentBalance(account, holdings, assetMap)
+  const effectiveInvestedBase = computeEffectiveInvestedBase(account, capitalTransactions)
+  const computedBalance  = computeInvestmentBalance(account, holdings, assetMap, capitalTransactions)
 
   // History from transactions (deposits + balance snapshots)
   const { data: historyData = [] } = useInvestmentAccountHistory(account)
@@ -70,17 +68,22 @@ export default function InvestmentAccountCard({ account, holdings, assets }: Pro
     }
   })
 
-  const investedBaseEuros = account.investedBase != null
-    ? Math.round(fromCents(account.investedBase) * 100) / 100
+  const investedBaseEuros = effectiveInvestedBase > 0
+    ? Math.round(fromCents(effectiveInvestedBase) * 100) / 100
     : null
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate('/investments')}
+            className="flex min-w-0 items-center gap-2.5 rounded-lg text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer"
+            title="Gerir investimentos"
+          >
             {bank && (
-              <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted shrink-0">
                 <BankLogo
                   domain={bank.logoDomain}
                   name={bank.name}
@@ -90,16 +93,11 @@ export default function InvestmentAccountCard({ account, holdings, assets }: Pro
                 />
               </div>
             )}
-            <CardTitle className="text-sm font-medium truncate">{account.name}</CardTitle>
-            <button
-              type="button"
-              onClick={() => navigate('/investments')}
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              title="Gerir investimentos"
-            >
+            <CardTitle className="truncate text-sm font-medium">{account.name}</CardTitle>
+            <span className="shrink-0 text-muted-foreground transition-colors">
               <ArrowUpRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
+            </span>
+          </button>
 
           <div className="text-right shrink-0">
             <p className="text-lg font-bold tabular-nums">{formatMoney(computedBalance)}</p>
@@ -113,12 +111,12 @@ export default function InvestmentAccountCard({ account, holdings, assets }: Pro
         {/* Stats grid */}
         {hasHoldings ? (
           <div className={`grid gap-2 rounded-lg bg-muted/30 px-3 py-2.5 ${account.investedBase != null ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {account.investedBase != null && (
+            {effectiveInvestedBase > 0 && (
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight">
                   {t('investments.investedBase')}
                 </p>
-                <p className="text-sm font-semibold tabular-nums">{formatMoney(account.investedBase)}</p>
+                <p className="text-sm font-semibold tabular-nums">{formatMoney(effectiveInvestedBase)}</p>
                 <p className="text-[10px] text-muted-foreground">depositado</p>
               </div>
             )}

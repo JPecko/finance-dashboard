@@ -23,6 +23,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useAccounts, sortAccounts, removeAccount } from '@/shared/hooks/useAccounts'
 import { useHoldings } from '@/shared/hooks/useHoldings'
 import { useAssets } from '@/shared/hooks/useAssets'
+import { useInvestmentCapitalAdjustments } from '@/shared/hooks/useTransactions'
 import { useAccountPrefsStore, type SortKey } from '@/shared/store/accountPrefsStore'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import BankLogo from '@/shared/components/BankLogo'
@@ -33,9 +34,10 @@ import PageLoader from '@/shared/components/PageLoader'
 import AccountFormModal from '../components/AccountFormModal'
 import RevalueModal from '../components/RevalueModal'
 import ShareAccountModal from '../components/ShareAccountModal'
+import { computeEffectiveInvestedBase, computeInvestmentBalance } from '@/features/investments/utils/investmentMetrics'
 import type { Account } from '@/domain/types'
 import { useT } from '@/shared/i18n'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   checking:   Banknote,
@@ -61,11 +63,11 @@ interface AccountCardProps {
   t: ReturnType<typeof useT>
   onEdit:   (a: Account) => void
   onDelete: (id: number | undefined) => void
-  onRevalue: (a: Account) => void
+  onOpenInvestments: (a: Account) => void
   onShare:   (a: Account) => void
 }
 
-function AccountCard({ account, bank, isManualEditing, user, t, onEdit, onDelete, onRevalue, onShare }: AccountCardProps) {
+function AccountCard({ account, bank, isManualEditing, user, t, onEdit, onDelete, onOpenInvestments, onShare }: AccountCardProps) {
   const isInvestment = account.type === 'investment'
   return (
     <Card className="overflow-hidden card-hoverable">
@@ -108,7 +110,7 @@ function AccountCard({ account, bank, isManualEditing, user, t, onEdit, onDelete
                 <DropdownMenuContent align="end">
                   {isInvestment && (
                     <>
-                      <DropdownMenuItem onClick={() => onRevalue(account)}>
+                      <DropdownMenuItem onClick={() => onOpenInvestments(account)}>
                         <BarChart2 className="h-4 w-4 mr-2" /> {t('accounts.updateValue')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -205,6 +207,7 @@ function SortableCard({ account, isManual, children }: SortableCardProps) {
 
 export default function AccountsPage() {
   const t = useT()
+  const navigate = useNavigate()
   const { data: accounts = [], isLoading } = useAccounts()
   const { user } = useAuth()
   const {
@@ -311,8 +314,23 @@ export default function AccountsPage() {
   const { data: holdings = [] } = useHoldings()
   const { data: assets   = [] } = useAssets()
   const assetMap = Object.fromEntries(assets.map(a => [a.id!, a]))
+  const investmentAccountIds = accounts.filter(account => account.type === 'investment' && account.id != null).map(account => account.id!)
+  const { data: capitalAdjustments = {} } = useInvestmentCapitalAdjustments(investmentAccountIds)
 
-  const totalBalance = accounts.reduce((s, a) => s + a.balance, 0)
+  const capitalTransactionsByAccount = Object.fromEntries(
+    investmentAccountIds.map(accountId => [
+      accountId,
+      [{ accountId, amount: capitalAdjustments[accountId] ?? 0, category: 'capital' } as unknown as import('@/domain/types').Transaction],
+    ]),
+  )
+
+  const effectiveBalance = (account: Account) => {
+    if (account.type !== 'investment') return account.balance
+    const accountHoldings = holdings.filter(holding => holding.accountId === account.id)
+    return computeInvestmentBalance(account, accountHoldings, assetMap, capitalTransactionsByAccount[account.id!] ?? [])
+  }
+
+  const totalBalance = accounts.reduce((sum, account) => sum + effectiveBalance(account), 0)
   const orderForSort = isManualEditing ? effectiveDraftOrder : manualOrder
   const sorted = sortAccounts(accounts, sort, orderForSort, colorOrder)
 
@@ -335,6 +353,11 @@ export default function AccountsPage() {
     if (confirm(t('accounts.deleteConfirm'))) {
       await removeAccount(id)
     }
+  }
+
+  const handleOpenInvestments = (account: Account) => {
+    navigate('/investments')
+    void account
   }
 
   return (
@@ -465,7 +488,7 @@ export default function AccountsPage() {
                           t={t}
                           onEdit={handleEdit}
                           onDelete={handleDelete}
-                          onRevalue={setRevaluing}
+                          onOpenInvestments={handleOpenInvestments}
                           onShare={setSharing}
                         />
                       </SortableCard>
@@ -494,6 +517,7 @@ export default function AccountsPage() {
                 {invAccounts.map(account => {
                   const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
                   const accountHoldings = holdings.filter(h => h.accountId === account.id)
+                  const effectiveInvestedBase = computeEffectiveInvestedBase(account, capitalTransactionsByAccount[account.id!] ?? [])
                   const marketValue = accountHoldings.length > 0
                     ? accountHoldings.reduce((s, h) => s + h.quantity * (assetMap[h.assetId]?.currentPrice ?? 0), 0)
                     : null
@@ -501,6 +525,7 @@ export default function AccountsPage() {
                     ? accountHoldings.reduce((s, h) => s + h.quantity * h.avgCost, 0)
                     : null
                   const pnl = marketValue != null && costBasis != null ? marketValue - costBasis : null
+                  const balance = effectiveBalance(account)
                   return (
                     <Card key={account.id} className="overflow-hidden card-hoverable">
                       <CardContent className="p-0">
@@ -540,7 +565,7 @@ export default function AccountsPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setRevaluing(account)}>
+                                  <DropdownMenuItem onClick={() => navigate('/investments')}>
                                     <BarChart2 className="h-4 w-4 mr-2" /> {t('accounts.updateValue')}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
@@ -564,9 +589,9 @@ export default function AccountsPage() {
                           {/* Bottom row */}
                           <div className="mt-3 flex items-end justify-between gap-2">
                             <div className="space-y-0.5">
-                              {account.investedBase != null && (
+                              {effectiveInvestedBase > 0 && (
                                 <p className="text-xs text-muted-foreground">
-                                  {t('investments.investedBase')}: <span className="font-medium text-foreground">{formatMoney(account.investedBase, account.currency)}</span>
+                                  {t('investments.investedBase')}: <span className="font-medium text-foreground">{formatMoney(effectiveInvestedBase, account.currency)}</span>
                                 </p>
                               )}
                               {pnl != null && (
@@ -582,8 +607,8 @@ export default function AccountsPage() {
                               )}
                             </div>
                             <div className="text-right shrink-0">
-                              <p className={`text-lg font-bold tabular-nums ${account.balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-                                {formatMoney(account.balance, account.currency)}
+                              <p className={`text-lg font-bold tabular-nums ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                                {formatMoney(balance, account.currency)}
                               </p>
                               <p className="text-[11px] text-muted-foreground">{account.currency}</p>
                             </div>
