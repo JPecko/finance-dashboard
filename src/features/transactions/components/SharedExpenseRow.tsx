@@ -22,6 +22,65 @@ interface SharedExpenseRowProps {
   linkedGroup?: { groupId: number; groupName: string }
 }
 
+function SharedExpenseMeta({
+  se,
+  linkedGroup,
+  onEdit,
+  t,
+}: {
+  se: SharedExpense
+  linkedGroup?: { groupId: number; groupName: string }
+  onEdit: (se: SharedExpense) => void
+  t: ReturnType<typeof useT>
+}) {
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      {se.payer === 'other' && (
+        <Badge variant="secondary" className="h-5 shrink-0 border-amber-500/50 px-1.5 py-0 text-xs text-amber-600 dark:text-amber-400">↩</Badge>
+      )}
+      {linkedGroup && (
+        <Badge
+          variant="secondary"
+          className="h-5 shrink-0 cursor-pointer border-violet-500/50 px-1.5 py-0 text-xs text-violet-600 dark:text-violet-400"
+          onClick={() => onEdit(se)}
+        >
+          <Users className="mr-1 h-3 w-3" />
+          {linkedGroup.groupName}
+        </Badge>
+      )}
+      {se.status === 'open' && (
+        <Badge variant="secondary" className="h-5 shrink-0 border-amber-500/50 px-1.5 py-0 text-xs uppercase text-amber-600 dark:text-amber-400">
+          {t('sharedExpenses.statusOpen')}
+        </Badge>
+      )}
+      {se.status === 'settled' && (
+        <Badge variant="secondary" className="h-5 shrink-0 px-1.5 py-0 text-xs uppercase text-muted-foreground">
+          {t('sharedExpenses.statusSettled')}
+        </Badge>
+      )}
+    </div>
+  )
+}
+
+function SharedExpenseDescription({
+  se,
+  linkedGroup,
+  onEdit,
+  t,
+}: {
+  se: SharedExpense
+  linkedGroup?: { groupId: number; groupName: string }
+  onEdit: (se: SharedExpense) => void
+  t: ReturnType<typeof useT>
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-semibold leading-snug">{se.description || '—'}</p>
+      <SharedExpenseMeta se={se} linkedGroup={linkedGroup} onEdit={onEdit} t={t} />
+    </div>
+  )
+}
+
 export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen, linkedGroup }: SharedExpenseRowProps) {
   const t   = useT()
   const cat = getCategoryById(se.category)
@@ -38,31 +97,13 @@ export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen, linke
       <span className="hidden md:block text-sm text-muted-foreground">{formatDate(se.date)}</span>
 
       {/* Description + status badge */}
-      <div className="hidden md:flex items-center gap-1.5 min-w-0">
-        <p className="text-sm font-semibold truncate leading-snug">{se.description || '—'}</p>
-        {se.payer === 'other' && (
-          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
-        )}
-        {linkedGroup && (
-          <Badge
-            variant="secondary"
-            className="text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer border-violet-500/50 text-violet-600 dark:text-violet-400"
-            onClick={() => onEdit(se)}
-          >
-            <Users className="h-3 w-3 mr-1" />
-            {linkedGroup.groupName}
-          </Badge>
-        )}
-        {se.status === 'open' && (
-          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400 uppercase">
-            {t('sharedExpenses.statusOpen')}
-          </Badge>
-        )}
-        {se.status === 'settled' && (
-          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 text-muted-foreground uppercase">
-            {t('sharedExpenses.statusSettled')}
-          </Badge>
-        )}
+      <div className="hidden min-w-0 md:block">
+        <SharedExpenseDescription
+          se={se}
+          linkedGroup={linkedGroup}
+          onEdit={onEdit}
+          t={t}
+        />
       </div>
 
       {/* Payer / account column */}
@@ -85,12 +126,12 @@ export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen, linke
 
       {/* Mobile layout */}
       <div className="md:hidden flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className="text-sm font-semibold truncate leading-snug">{se.description || '—'}</p>
-          {se.payer === 'other' && (
-            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
-          )}
-        </div>
+        <SharedExpenseDescription
+          se={se}
+          linkedGroup={linkedGroup}
+          onEdit={onEdit}
+          t={t}
+        />
         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           <Badge
             variant="secondary"
@@ -99,26 +140,6 @@ export default function SharedExpenseRow({ se, onEdit, onDelete, onReopen, linke
           >
             {tCategory(cat.id, t)}
           </Badge>
-          {linkedGroup && (
-            <Badge
-              variant="secondary"
-              className="text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer border-violet-500/50 text-violet-600 dark:text-violet-400"
-              onClick={() => onEdit(se)}
-            >
-              <Users className="h-3 w-3 mr-1" />
-              {linkedGroup.groupName}
-            </Badge>
-          )}
-          {se.status === 'open' && (
-            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400 uppercase">
-              {t('sharedExpenses.statusOpen')}
-            </Badge>
-          )}
-          {se.status === 'settled' && (
-            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 text-muted-foreground uppercase">
-              {t('sharedExpenses.statusSettled')}
-            </Badge>
-          )}
         </div>
         <div className="text-sm text-muted-foreground mt-1">{formatDate(se.date)}</div>
         {se.payerLabel && (

@@ -1,4 +1,4 @@
-import { Pencil, Trash2, ArrowRight, Wallet, Banknote, PiggyBank, BarChart2, HandCoins, CreditCard, RotateCcw } from 'lucide-react'
+import { Pencil, Trash2, ArrowRight, Wallet, Banknote, PiggyBank, BarChart2, HandCoins, CreditCard, RotateCcw, Users } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import {
@@ -81,6 +81,88 @@ function accountLabel(tx: Transaction, accountsById: Record<number, Account>) {
   return <AccountPill accountId={tx.accountId} accountsById={accountsById} />
 }
 
+function TransactionMetaBadges({
+  tx,
+  personalBadge,
+  linkedGroup,
+  linkedSE,
+  onEdit,
+  t,
+}: {
+  tx: Transaction
+  personalBadge: { label: string; cls: string } | null
+  linkedGroup?: { groupId: number; groupName: string }
+  linkedSE?: SharedExpense
+  onEdit: (tx: Transaction) => void
+  t: ReturnType<typeof useT>
+}) {
+  const splitAmount = linkedSE ? formatMoney(linkedSE.totalAmount - linkedSE.myShare) : null
+
+  if (!tx.isReimbursable && !personalBadge && !linkedGroup && !linkedSE) return null
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      {tx.isReimbursable && (
+        <Badge variant="secondary" className="h-5 shrink-0 border-amber-500/50 px-1.5 py-0 text-xs text-amber-600 dark:text-amber-400">↩</Badge>
+      )}
+      {personalBadge && (
+        <Badge variant="secondary" className={`h-5 shrink-0 px-1.5 py-0 text-xs ${personalBadge.cls}`}>{personalBadge.label}</Badge>
+      )}
+      {linkedGroup && (
+        <Badge
+          variant="secondary"
+          className="h-5 shrink-0 cursor-pointer border-violet-500/50 px-1.5 py-0 text-xs text-violet-600 dark:text-violet-400"
+          onClick={() => onEdit(tx)}
+        >
+          <Users className="mr-1 h-3 w-3" />
+          { linkedGroup.groupName }
+        </Badge>
+      )}
+      {linkedSE && splitAmount && (
+        <Badge
+          variant="secondary"
+          className={`h-5 shrink-0 cursor-pointer px-1.5 py-0 text-xs ${linkedSE.status === 'open' ? 'border-blue-500/50 text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
+          onClick={() => onEdit(tx)}
+        >
+          {linkedSE.status === 'open'
+            ? t('sharedExpenses.splitPending', { amount: splitAmount })
+            : t('sharedExpenses.splitSettled', { amount: splitAmount })}
+        </Badge>
+      )}
+    </div>
+  )
+}
+
+function TransactionDescription({
+  tx,
+  personalBadge,
+  linkedGroup,
+  linkedSE,
+  onEdit,
+  t,
+}: {
+  tx: Transaction
+  personalBadge: { label: string; cls: string } | null
+  linkedGroup?: { groupId: number; groupName: string }
+  linkedSE?: SharedExpense
+  onEdit: (tx: Transaction) => void
+  t: ReturnType<typeof useT>
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-semibold leading-snug">{tx.description || '—'}</p>
+      <TransactionMetaBadges
+        tx={tx}
+        personalBadge={personalBadge}
+        linkedGroup={linkedGroup}
+        linkedSE={linkedSE}
+        onEdit={onEdit}
+        t={t}
+      />
+    </div>
+  )
+}
+
 export default function TransactionRow({
   tx,
   accountsById,
@@ -112,34 +194,15 @@ export default function TransactionRow({
       <div className="absolute inset-0 bg-foreground/[0.04] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
       <span className="hidden lg:block text-sm text-muted-foreground">{formatDate(tx.date)}</span>
-      <div className="hidden lg:flex items-center gap-1.5 min-w-0">
-        <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
-        {tx.isReimbursable && (
-          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
-        )}
-        {personalBadge && (
-          <Badge variant="secondary" className={`text-xs px-1.5 py-0 h-5 shrink-0 ${personalBadge.cls}`}>{personalBadge.label}</Badge>
-        )}
-        {linkedGroup && (
-          <Badge
-            variant="secondary"
-            className="text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer border-violet-500/50 text-violet-600 dark:text-violet-400"
-            onClick={() => onEdit(tx)}
-          >
-            {t('groups.inGroup', { name: linkedGroup.groupName })}
-          </Badge>
-        )}
-        {linkedSE && (
-          <Badge
-            variant="secondary"
-            className={`text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer ${linkedSE.status === 'open' ? 'border-blue-500/50 text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
-            onClick={() => onEdit(tx)}
-          >
-            {linkedSE.status === 'open'
-              ? t('sharedExpenses.splitPending', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })
-              : t('sharedExpenses.splitSettled', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })}
-          </Badge>
-        )}
+      <div className="hidden min-w-0 lg:block">
+        <TransactionDescription
+          tx={tx}
+          personalBadge={personalBadge}
+          linkedGroup={linkedGroup}
+          linkedSE={linkedSE}
+          onEdit={onEdit}
+          t={t}
+        />
       </div>
       <div className="hidden lg:block min-w-0">
         <div className={transfer ? 'text-sm text-muted-foreground' : 'text-sm text-muted-foreground truncate'}>
@@ -157,15 +220,14 @@ export default function TransactionRow({
       </div>
 
       <div className="lg:hidden flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className="text-sm font-semibold truncate leading-snug">{tx.description || '—'}</p>
-          {tx.isReimbursable && (
-            <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400">↩</Badge>
-          )}
-          {personalBadge && (
-            <Badge variant="secondary" className={`text-xs px-1.5 py-0 h-5 shrink-0 ${personalBadge.cls}`}>{personalBadge.label}</Badge>
-          )}
-        </div>
+        <TransactionDescription
+          tx={tx}
+          personalBadge={personalBadge}
+          linkedGroup={linkedGroup}
+          linkedSE={linkedSE}
+          onEdit={onEdit}
+          t={t}
+        />
         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           <Badge
             variant="secondary"
@@ -174,26 +236,6 @@ export default function TransactionRow({
           >
             {tCategory(cat.id, t)}
           </Badge>
-          {linkedGroup && (
-            <Badge
-              variant="secondary"
-              className="text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer border-violet-500/50 text-violet-600 dark:text-violet-400"
-              onClick={() => onEdit(tx)}
-            >
-              {t('groups.inGroup', { name: linkedGroup.groupName })}
-            </Badge>
-          )}
-          {linkedSE && (
-            <Badge
-              variant="secondary"
-              className={`text-xs px-1.5 py-0 h-5 shrink-0 cursor-pointer ${linkedSE.status === 'open' ? 'border-blue-500/50 text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
-              onClick={() => onEdit(tx)}
-            >
-              {linkedSE.status === 'open'
-                ? t('sharedExpenses.splitPending', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })
-                : t('sharedExpenses.splitSettled', { amount: formatMoney(linkedSE.totalAmount - linkedSE.myShare) })}
-            </Badge>
-          )}
         </div>
         <div className="text-sm text-muted-foreground mt-1">{formatDate(tx.date)}</div>
         <div className={transfer ? 'text-sm text-muted-foreground mt-0.5' : 'text-sm text-muted-foreground mt-0.5 truncate'}>

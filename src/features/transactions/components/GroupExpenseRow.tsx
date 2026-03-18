@@ -16,20 +16,27 @@ interface Props {
   item: GroupExpenseItem
 }
 
+function GroupExpenseDescription({ item }: Props) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-semibold leading-snug">{item.description || '—'}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        <Badge
+          variant="secondary"
+          className="h-5 shrink-0 border-violet-500/50 px-1.5 py-0 text-xs text-violet-600 dark:text-violet-400"
+        >
+          <Users className="mr-1 h-3 w-3" />
+          {item.groupName}
+        </Badge>
+      </div>
+    </div>
+  )
+}
+
 export default function GroupExpenseRow({ item }: Props) {
   const t        = useT()
   const navigate = useNavigate()
   const cat      = getCategoryById(item.category)
-
-  const groupBadge = (
-    <Badge
-      variant="secondary"
-      className="text-xs px-1.5 py-0 h-5 shrink-0 border-violet-500/50 text-violet-600 dark:text-violet-400"
-    >
-      <Users className="h-3 w-3 mr-1" />
-      {item.groupName}
-    </Badge>
-  )
 
   return (
     <div className={ROW_BASE_CLASS} style={{ backgroundColor: `${cat.color}12` }}>
@@ -39,9 +46,8 @@ export default function GroupExpenseRow({ item }: Props) {
       <span className="hidden md:block text-sm text-muted-foreground">{formatDate(item.date)}</span>
 
       {/* Description + group badge — desktop */}
-      <div className="hidden md:flex items-center gap-1.5 min-w-0">
-        <p className="text-sm font-semibold truncate leading-snug">{item.description || '—'}</p>
-        {groupBadge}
+      <div className="hidden min-w-0 md:block">
+        <GroupExpenseDescription item={item} />
       </div>
 
       {/* Account column — payer name (no bank account involved) */}
@@ -60,7 +66,7 @@ export default function GroupExpenseRow({ item }: Props) {
 
       {/* Mobile layout */}
       <div className="md:hidden flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate leading-snug">{item.description || '—'}</p>
+        <GroupExpenseDescription item={item} />
         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           <Badge
             variant="secondary"
@@ -69,7 +75,6 @@ export default function GroupExpenseRow({ item }: Props) {
           >
             {tCategory(cat.id, t)}
           </Badge>
-          {groupBadge}
         </div>
         <div className="text-sm text-muted-foreground mt-1">{formatDate(item.date)}</div>
         <div className="text-sm text-muted-foreground mt-0.5 truncate">{item.paidByName}</div>
