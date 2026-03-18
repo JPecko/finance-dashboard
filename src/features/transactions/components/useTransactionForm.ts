@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react'
+import { useLayoutEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { toCents, fromCents } from '@/domain/money'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORIES } from '@/domain/categories'
@@ -75,8 +75,8 @@ function makeDefaults(
   }
 }
 
-function makeEditValues(tx: Transaction, account: { participants?: number } | undefined): TransactionFormValues {
-  const n        = account?.participants ?? 1
+function makeEditValues(tx: Transaction, participants?: number): TransactionFormValues {
+  const n        = participants ?? 1
   const isShared = tx.isPersonal ? false : tx.splitN != null ? true : n > 1
 
   let fromId: string, toId: string
@@ -105,6 +105,71 @@ function makeEditValues(tx: Transaction, account: { participants?: number } | un
   }
 }
 
+function makeResetValues(
+  transaction: Transaction | undefined,
+  targetType: TransactionType,
+  firstId: string,
+  secondId: string,
+  splitN: number,
+  isShared: boolean,
+  participants?: number,
+): TransactionFormValues {
+  const defaults = makeDefaults(targetType, firstId, secondId, splitN, isShared)
+  if (!transaction) return defaults
+
+  const editValues = makeEditValues(transaction, participants)
+  if (transaction.type === targetType) return editValues
+
+  const primaryAccountId =
+    editValues.fromId !== EXTERNAL ? editValues.fromId :
+    editValues.toId !== EXTERNAL ? editValues.toId :
+    firstId
+
+  if (targetType === 'income') {
+    return {
+      ...defaults,
+      amount: editValues.amount,
+      category: 'other',
+      description: editValues.description,
+      date: editValues.date,
+      toId: primaryAccountId,
+      holdingId: editValues.holdingId,
+      units: editValues.units,
+    }
+  }
+
+  if (targetType === 'expense') {
+    return {
+      ...defaults,
+      amount: editValues.amount,
+      category: editValues.category === 'transfer' ? 'other' : editValues.category,
+      description: editValues.description,
+      date: editValues.date,
+      fromId: primaryAccountId,
+      isShared: editValues.isShared,
+      splitN: editValues.splitN,
+      isReimbursable: editValues.isReimbursable,
+      personalUserId: editValues.personalUserId,
+      holdingId: editValues.holdingId,
+      units: editValues.units,
+    }
+  }
+
+  const fallbackToId =
+    editValues.toId !== EXTERNAL && editValues.toId !== primaryAccountId
+      ? editValues.toId
+      : secondId
+
+  return {
+    ...defaults,
+    amount: editValues.amount,
+    description: editValues.description,
+    date: editValues.date,
+    fromId: primaryAccountId,
+    toId: fallbackToId,
+  }
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 interface UseTransactionFormProps {
@@ -129,6 +194,20 @@ export function useTransactionForm({
   const isSharedDef = (primary?.participants ?? 1) > 1
   const splitNDef   = isSharedDef ? primary!.participants! : 2
   const editAccount = transaction ? accounts.find(a => a.id === transaction.accountId) : undefined
+  const editParticipants = editAccount?.participants
+
+  const resetValues = useMemo(
+    () => makeResetValues(
+      transaction,
+      defaultType,
+      firstId,
+      secondId,
+      splitNDef,
+      isSharedDef,
+      editParticipants,
+    ),
+    [transaction, editParticipants, defaultType, firstId, secondId, splitNDef, isSharedDef],
+  )
 
   const form = useForm<TransactionFormValues>({
     defaultValues: makeDefaults(defaultType, firstId, secondId, splitNDef, isSharedDef),
@@ -184,11 +263,10 @@ export function useTransactionForm({
     if (t !== 'transfer') applyShared(firstId, t)
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (!open) return
-    reset(transaction ? makeEditValues(transaction, editAccount) : makeDefaults(defaultType, firstId, secondId, splitNDef, isSharedDef))
-  }, [open, transaction, firstId, secondId, splitNDef, isSharedDef, editAccount, reset])
+    reset(resetValues)
+  }, [open, reset, resetValues])
 
   const onSubmit = handleSubmit(async (values) => {
     const payload = buildPayload(values)

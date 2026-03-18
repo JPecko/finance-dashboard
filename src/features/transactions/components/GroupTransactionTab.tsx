@@ -1,0 +1,58 @@
+import { useGroupTransactionForm } from './useGroupTransactionForm'
+import GroupTransactionForm from './GroupTransactionForm'
+import type { Account, SharedExpense, Transaction } from '@/domain/types'
+
+interface Props {
+  open: boolean
+  onClose: () => void
+  transaction?: Transaction
+  sharedExpense?: SharedExpense
+  accounts: Account[]
+  groups: { id: number; name: string }[]
+  currentUserId?: string
+}
+
+export default function GroupTransactionTab({
+  open,
+  onClose,
+  transaction,
+  sharedExpense,
+  accounts,
+  groups,
+  currentUserId,
+}: Props) {
+  const grpHook = useGroupTransactionForm({ open, onClose, transaction, sharedExpense, accounts })
+
+  return (
+    <GroupTransactionForm
+      onClose={onClose}
+      onSubmit={grpHook.onSubmit}
+      groups={groups}
+      accounts={accounts}
+      register={grpHook.register}
+      watch={grpHook.watch}
+      setValue={grpHook.setValue}
+      errors={grpHook.errors}
+      isSubmitting={grpHook.isSubmitting}
+      members={grpHook.members}
+      splits={grpHook.splits}
+      setSplits={grpHook.setSplits}
+      splitMode={grpHook.splitMode}
+      setSplitMode={grpHook.setSplitMode}
+      setSplitError={grpHook.setSplitError}
+      percents={grpHook.percents}
+      setPercents={grpHook.setPercents}
+      splitError={grpHook.splitError}
+      createTx={grpHook.createTx}
+      setCreateTx={grpHook.setCreateTx}
+      linkedEntry={grpHook.linkedEntry}
+      myMember={grpHook.myMember}
+      myShareCents={grpHook.myShareCents}
+      othersOweCents={grpHook.othersOweCents}
+      totalCents={grpHook.totalCents}
+      canSubmit={grpHook.canSubmit}
+      currentUserId={currentUserId}
+      handleSwitchToPercent={grpHook.handleSwitchToPercent}
+    />
+  )
+}
