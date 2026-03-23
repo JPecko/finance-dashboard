@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import { Label } from '@/shared/components/ui/label'
 import type { Account, TransactionType } from '@/domain/types'
-import PlainSelect from './PlainSelect'
+import PlainSelect from '@/shared/components/PlainSelect'
 import { buildAccountSelectOption, buildExternalAccountOption } from './accountSelectOptions'
 import { EXTERNAL } from './useTransactionForm'
 

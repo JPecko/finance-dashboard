@@ -148,7 +148,7 @@ export interface GroupEntry {
   createdAt: string
 }
 
-/** View model for a group entry where another member paid and the user owes their share */
+/** View model for a group entry where the user has a share — either paid by them or by another member */
 export interface GroupExpenseItem {
   entryId:     number
   groupId:     number
@@ -158,6 +158,8 @@ export interface GroupExpenseItem {
   category:    string
   myShare:     number   // cents – user's split amount
   paidByName:  string
+  paidByMe:    boolean  // true when the current user paid the full amount
+  createdAt:   string
 }
 
 export interface GroupEntrySplit {

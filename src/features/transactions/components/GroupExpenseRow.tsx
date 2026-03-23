@@ -51,7 +51,9 @@ export default function GroupExpenseRow({ item }: Props) {
       </div>
 
       {/* Account column — payer name (no bank account involved) */}
-      <div className="hidden md:block min-w-0 text-sm text-muted-foreground truncate">{item.paidByName}</div>
+      <div className="hidden md:block min-w-0 text-sm text-muted-foreground truncate">
+        {item.paidByMe ? t('groups.iPaid') : item.paidByName}
+      </div>
 
       {/* Category — desktop */}
       <div className="hidden md:flex items-center">
@@ -77,7 +79,9 @@ export default function GroupExpenseRow({ item }: Props) {
           </Badge>
         </div>
         <div className="text-sm text-muted-foreground mt-1">{formatDate(item.date)}</div>
-        <div className="text-sm text-muted-foreground mt-0.5 truncate">{item.paidByName}</div>
+        <div className="text-sm text-muted-foreground mt-0.5 truncate">
+          {item.paidByMe ? t('groups.iPaid') : item.paidByName}
+        </div>
       </div>
 
       {/* Amount — user's share, shown as expense */}

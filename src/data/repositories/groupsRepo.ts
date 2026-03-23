@@ -356,9 +356,9 @@ export const groupsRepo = {
   },
 
   /**
-   * Returns all group entries in a given month where another member paid
-   * and the current user has a non-zero split. Used to show virtual expense
-   * rows in the transaction list for category budgeting.
+   * Returns all group entries in a given month where the current user has a
+   * non-zero split — regardless of who paid. Used to show virtual expense
+   * rows in the transaction list so the user's share is always counted.
    */
   getMyGroupExpensesForMonth: async (year: number, month: number): Promise<GroupExpenseItem[]> => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -377,14 +377,14 @@ export const groupsRepo = {
     const toMonth = month === 12 ? 1 : month + 1
     const to = `${toYear}-${String(toMonth).padStart(2, '0')}-01`
 
-    // Fetch splits for the user in entries of that month, excluding entries they paid
+    // Fetch splits for the user in entries of that month — all entries, including ones they paid
     const { data, error } = await supabase
       .from('group_entry_splits')
       .select(`
         amount,
         member_id,
         group_entries!inner(
-          id, group_id, description, date, category, total_amount, paid_by_member_id,
+          id, group_id, description, date, category, total_amount, paid_by_member_id, created_at,
           groups!inner(name),
           payer:group_members!paid_by_member_id(name)
         )
@@ -393,14 +393,13 @@ export const groupsRepo = {
       .gt('amount', 0)
       .gte('group_entries.date', from)
       .lt('group_entries.date', to)
-      .not('group_entries.paid_by_member_id', 'in', `(${memberIds.join(',')})`)
     if (error || !data) return []
 
     type Row = {
       amount: number
       group_entries: {
         id: number; group_id: number; description: string; date: string
-        category: string; total_amount: number; paid_by_member_id: number
+        category: string; total_amount: number; paid_by_member_id: number; created_at: string
         groups: { name: string }
         payer: { name: string } | null
       }
@@ -414,6 +413,8 @@ export const groupsRepo = {
       category:    row.group_entries.category,
       myShare:     row.amount,
       paidByName:  row.group_entries.payer?.name ?? '—',
+      paidByMe:    memberIds.includes(row.group_entries.paid_by_member_id),
+      createdAt:   row.group_entries.created_at,
     }))
   },
 

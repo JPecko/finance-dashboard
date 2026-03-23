@@ -4,7 +4,7 @@ import BankLogo from '@/shared/components/BankLogo'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import { EXTERNAL } from './useTransactionForm'
 import type { Account } from '@/domain/types'
-import type { PlainSelectOption } from './PlainSelect'
+import type { PlainSelectOption } from '@/shared/components/PlainSelect'
 
 const TYPE_ICONS: Record<string, ElementType> = {
   checking: Banknote,

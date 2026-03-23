@@ -83,6 +83,8 @@ export function useTransactionsPageModel() {
   const listItems = useMemo<ListItem[]>(() => {
     const txItems: ListItem[] = transactions
       .filter(tx => {
+        // Reimbursable transactions linked to a group entry are represented by the group-expense row
+        if (tx.isReimbursable && tx.id != null && txGroupMap[tx.id] != null) return false
         if (filterSource === 'shared' && (tx.id == null || txSeMap[tx.id] == null) && (tx.id == null || txGroupMap[tx.id] == null)) return false
         if (filterAccountId !== null && tx.accountId !== filterAccountId && tx.toAccountId !== filterAccountId) return false
         if (filterCategory !== null && tx.category !== filterCategory) return false
@@ -108,9 +110,11 @@ export function useTransactionsPageModel() {
       })
       .map(ge => ({ kind: 'group-expense' as const, data: ge }))
 
-    return [...txItems, ...seItems, ...groupExpenseItems].sort((a, b) =>
-      b.data.date.localeCompare(a.data.date)
-    )
+    return [...txItems, ...seItems, ...groupExpenseItems].sort((a, b) => {
+      const byDate = b.data.date.localeCompare(a.data.date)
+      if (byDate !== 0) return byDate
+      return b.data.createdAt.localeCompare(a.data.createdAt)
+    })
   }, [transactions, sharedExpenses, myGroupExpenses, txSeMap, txGroupMap, seGroupMap, filterAccountId, filterCategory, filterSource])
 
   const prevMonth = () => {

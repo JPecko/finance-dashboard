@@ -164,7 +164,8 @@ export function useGroupTransactionForm({ open, onClose, transaction, sharedExpe
     setSplitMode('even')
     setPercents({})
     setSplitError('')
-    setCreateTx(false)
+    // Default to creating a real bank transaction when the user is the payer
+    setCreateTx(!sharedExpense && !transaction)
   }, [open, reset, transaction, sharedExpense, fallbackAccountId])
 
   // ── Load members when group changes ───────────────────────────────────────

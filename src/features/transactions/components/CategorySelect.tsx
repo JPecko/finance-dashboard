@@ -1,7 +1,7 @@
 import { Label } from '@/shared/components/ui/label'
 import { tCategory, type Category } from '@/domain/categories'
 import { useT } from '@/shared/i18n'
-import PlainSelect from './PlainSelect'
+import PlainSelect from '@/shared/components/PlainSelect'
 
 interface Props {
   categories: Category[]
