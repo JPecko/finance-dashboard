@@ -189,6 +189,12 @@ export const pt: typeof en = {
     perUnit:              'por unidade',
   },
 
+  update: {
+    title:     'Nova versão disponível',
+    message:   'Há uma nova versão do Financelli disponível. Atualiza agora para teres as últimas melhorias.',
+    updateBtn: 'Atualizar agora',
+  },
+
   auth: {
     signIn:            'Iniciar Sessão',
     signUp:            'Criar Conta',

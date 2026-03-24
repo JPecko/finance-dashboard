@@ -398,6 +398,12 @@ export const en = {
     perUnit:              'per unit',
   },
 
+  update: {
+    title:     'New version available',
+    message:   'A new version of Financelli is available. Update now to get the latest improvements.',
+    updateBtn: 'Update now',
+  },
+
   auth: {
     signIn:            'Sign In',
     signUp:            'Create Account',
