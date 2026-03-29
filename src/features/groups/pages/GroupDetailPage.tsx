@@ -309,7 +309,7 @@ export default function GroupDetailPage() {
     return (
       <div className="p-6">
         <p className="text-muted-foreground">Group not found.</p>
-        <Button variant="ghost" onClick={() => navigate('/groups')} className="mt-4">
+        <Button variant="ghost" onClick={() => navigate('/groups', { state: { skipAutoRedirect: true } })} className="mt-4">
           <ArrowLeft className="h-4 w-4 mr-2" /> {t('groups.back')}
         </Button>
       </div>
@@ -323,7 +323,7 @@ export default function GroupDetailPage() {
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/groups')} className="-ml-2 shrink-0">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/groups', { state: { skipAutoRedirect: true } })} className="-ml-2 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">

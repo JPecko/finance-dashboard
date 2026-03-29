@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Users, ChevronRight } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Card, CardContent } from '@/shared/components/ui/card'
@@ -12,8 +12,17 @@ import GroupFormModal from '../components/GroupFormModal'
 export default function GroupsPage() {
   const t        = useT()
   const navigate = useNavigate()
+  const location = useLocation()
   const { data: groups = [], isLoading } = useGroups()
   const [modalOpen, setModalOpen] = useState(false)
+
+  const skipAutoRedirect = (location.state as { skipAutoRedirect?: boolean } | null)?.skipAutoRedirect
+
+  useEffect(() => {
+    if (!isLoading && groups.length === 1 && !skipAutoRedirect) {
+      navigate(`/groups/${groups[0].id}`, { replace: true })
+    }
+  }, [isLoading, groups, navigate, skipAutoRedirect])
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
