@@ -16,6 +16,9 @@ export const GROUP_EXPENSE_CATS = EXPENSE_CATEGORIES.filter(
   c => c.id !== 'roundup' && c.id !== 'cashback' && c.id !== 'investing',
 )
 
+// Normalises European comma decimal separator before parsing
+const parseMoney = (v: string) => parseFloat(String(v).replace(',', '.')) || 0
+
 function distributeEvenly(totalCents: number, memberIds: number[]): Record<number, number> {
   if (memberIds.length === 0) return {}
   const base      = Math.floor(totalCents / memberIds.length)
@@ -211,7 +214,7 @@ export function useGroupTransactionForm({ open, onClose, transaction, sharedExpe
   // ── Recompute even splits ──────────────────────────────────────────────────
   useEffect(() => {
     if (splitMode !== 'even' || members.length === 0) return
-    const totalCents  = toCents(parseFloat(total) || 0)
+    const totalCents  = toCents(parseMoney(total))
     const distributed = distributeEvenly(totalCents, members.map(m => m.id!))
     setSplits(members.map(m => ({ memberId: m.id!, amount: fromCents(distributed[m.id!] ?? 0).toFixed(2) })))
   }, [total, splitMode, members])
@@ -219,7 +222,7 @@ export function useGroupTransactionForm({ open, onClose, transaction, sharedExpe
   // ── Recompute percent splits ───────────────────────────────────────────────
   useEffect(() => {
     if (splitMode !== 'percent' || members.length === 0) return
-    const totalCents = toCents(parseFloat(total) || 0)
+    const totalCents = toCents(parseMoney(total))
     setSplits(members.map(m => {
       const pct = parseFloat(percents[m.id!] || '0') / 100
       return { memberId: m.id!, amount: fromCents(Math.round(totalCents * pct)).toFixed(2) }
@@ -228,7 +231,7 @@ export function useGroupTransactionForm({ open, onClose, transaction, sharedExpe
 
   // ── Switch to percent mode ─────────────────────────────────────────────────
   const handleSwitchToPercent = () => {
-    const totalCents  = toCents(parseFloat(total) || 0)
+    const totalCents  = toCents(parseMoney(total))
     const newPercents: Record<number, string> = {}
     if (splitMode === 'custom' && totalCents > 0) {
       members.forEach(m => {
@@ -254,10 +257,10 @@ export function useGroupTransactionForm({ open, onClose, transaction, sharedExpe
     if (!user) return
     const gId = parseInt(values.groupId)
     if (!gId || members.length === 0) return
-    const totalCents = toCents(parseFloat(values.totalAmount) || 0)
+    const totalCents = toCents(parseMoney(values.totalAmount))
     if (totalCents <= 0) return
 
-    const splitCents = splits.map(s => ({ memberId: s.memberId, amount: toCents(parseFloat(s.amount) || 0) }))
+    const splitCents = splits.map(s => ({ memberId: s.memberId, amount: toCents(parseMoney(s.amount)) }))
     const splitSum   = splitCents.reduce((sum, s) => sum + s.amount, 0)
     if (Math.abs(splitSum - totalCents) > members.length) {
       setSplitError(t('groups.splitSumMismatch'))
@@ -296,12 +299,12 @@ export function useGroupTransactionForm({ open, onClose, transaction, sharedExpe
   })
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const totalCents     = toCents(parseFloat(total) || 0)
+  const totalCents     = toCents(parseMoney(total))
   const myShare        = splits.find(s => s.memberId === myMember?.id)
-  const myShareCents   = myShare ? toCents(parseFloat(myShare.amount) || 0) : 0
+  const myShareCents   = myShare ? toCents(parseMoney(myShare.amount)) : 0
   const othersOweCents = totalCents - myShareCents
   const canSubmit      = groupId !== '' && members.length > 0 && !!myMember
-    && (!createTx || accountId !== '') && parseFloat(total) > 0
+    && (!createTx || accountId !== '') && parseMoney(total) > 0
 
   return {
     register, watch, setValue, errors, isSubmitting,

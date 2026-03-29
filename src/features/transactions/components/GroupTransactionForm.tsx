@@ -3,25 +3,17 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { DialogFooter } from '@/shared/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import CategorySelect from './CategorySelect'
 import PlainSelect from '@/shared/components/PlainSelect'
+import AmountInput from '@/shared/components/AmountInput'
+import FormToggle from '@/shared/components/FormToggle'
 import { buildAccountSelectOption } from './accountSelectOptions'
 import { GROUP_EXPENSE_CATS, type GrpSplitRow, type GrpFormValues } from './useGroupTransactionForm'
 import { fromCents } from '@/domain/money'
 import { useT } from '@/shared/i18n'
 import type { UseFormRegister, UseFormSetValue } from 'react-hook-form'
 import type { GroupMember, Account, GroupEntry } from '@/domain/types'
-
-// ── Toggle ────────────────────────────────────────────────────────────────────
-
-function Toggle({ on, color = 'bg-primary' }: { on: boolean; color?: string }) {
-  return (
-    <div className="relative shrink-0">
-      <div className={`h-5 w-9 rounded-full transition-colors ${on ? color : 'bg-muted'}`} />
-      <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${on ? 'left-5' : 'left-1'}`} />
-    </div>
-  )
-}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -48,7 +40,7 @@ interface Props {
   splitError:   string
   createTx:     boolean
   setCreateTx:  (v: boolean) => void
-  linkedEntry:  GroupEntry | null  // reserved for future use
+  linkedEntry:  GroupEntry | null
   myMember:     GroupMember | undefined
   myShareCents: number
   othersOweCents: number
@@ -78,9 +70,9 @@ export default function GroupTransactionForm({
   const payerMemberId = watch('payerMemberId')
   const category      = watch('category')
   const total         = watch('totalAmount')
-  const groupOptions = groups.map(group => ({ value: String(group.id), label: group.name }))
+  const groupOptions   = groups.map(group => ({ value: String(group.id), label: group.name }))
   const accountOptions = accounts.map(buildAccountSelectOption)
-  const memberOptions = members
+  const memberOptions  = members
     .filter(member => member.userId !== currentUserId)
     .map(member => ({ value: String(member.id), label: member.name }))
 
@@ -151,7 +143,7 @@ export default function GroupTransactionForm({
                   <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
                   <p className="text-xs text-muted-foreground mt-1">{t('transactions.reimbursableDesc')}</p>
                 </div>
-                <Toggle on={createTx} />
+                <FormToggle on={createTx} />
               </label>
               {createTx && (
                 <div className="px-4 pb-3 border-t bg-muted/20 pt-3">
@@ -181,7 +173,7 @@ export default function GroupTransactionForm({
           )}
 
           {/* Description + Date */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="grp-desc">{t('transactions.colDescription')}</Label>
               <Input id="grp-desc" placeholder="Jantar, táxi..." {...register('description')} />
@@ -193,17 +185,17 @@ export default function GroupTransactionForm({
           </div>
 
           {/* Category + Total */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <CategorySelect categories={GROUP_EXPENSE_CATS} value={category} onChange={v => setValue('category', v)} />
             <div className="space-y-1.5">
               <Label htmlFor="grp-total">{t('groups.totalAmount')}</Label>
-              <Input
+              <AmountInput
                 id="grp-total"
-                type="number"
-                step="0.01"
-                min="0.01"
                 placeholder="0.00"
-                {...register('totalAmount', { required: true, min: 0.01 })}
+                {...register('totalAmount', {
+                  required: true,
+                  validate: v => parseFloat(String(v).replace(',', '.')) >= 0.01 || 'Must be > 0',
+                })}
                 className={errors.totalAmount ? 'border-destructive' : ''}
               />
             </div>
@@ -322,11 +314,7 @@ function SplitSection({
               </span>
               {splitMode === 'percent' ? (
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
+                  <AmountInput
                     value={percents[split.memberId] ?? ''}
                     onChange={e => {
                       setPercents(prev => ({ ...prev, [split.memberId]: e.target.value }))
@@ -340,27 +328,22 @@ function SplitSection({
                   </span>
                 </div>
               ) : (
-                <div className="w-28">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={split.amount}
-                    onChange={e => {
-                      setSplits(prev => prev.map(s => s.memberId === split.memberId ? { ...s, amount: e.target.value } : s))
-                      setSplitError('')
-                    }}
-                    readOnly={splitMode === 'even'}
-                    className={`text-right ${splitMode === 'even' ? 'bg-muted text-muted-foreground' : ''}`}
-                  />
-                </div>
+                <AmountInput
+                  value={split.amount}
+                  onChange={e => {
+                    setSplits(prev => prev.map(s => s.memberId === split.memberId ? { ...s, amount: e.target.value } : s))
+                    setSplitError('')
+                  }}
+                  readOnly={splitMode === 'even'}
+                  className={cn('w-28 text-right', splitMode === 'even' && 'bg-muted text-muted-foreground')}
+                />
               )}
             </div>
           )
         })}
 
         {splitMode === 'percent' && members.length > 0 && (() => {
-          const pctSum = members.reduce((s, m) => s + parseFloat(percents[m.id!] || '0'), 0)
+          const pctSum = members.reduce((s, m) => s + parseFloat(String(percents[m.id!] || '0').replace(',', '.')), 0)
           const diff   = Math.abs(pctSum - 100)
           return (
             <div className={`text-xs text-right pt-1 border-t tabular-nums ${diff > 0.5 ? 'text-destructive' : 'text-muted-foreground'}`}>

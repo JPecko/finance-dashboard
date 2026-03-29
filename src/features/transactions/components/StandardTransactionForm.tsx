@@ -5,20 +5,11 @@ import { DialogFooter } from '@/shared/components/ui/dialog'
 import AccountSelector from './AccountSelector'
 import CategorySelect from './CategorySelect'
 import PlainSelect from '@/shared/components/PlainSelect'
+import AmountInput from '@/shared/components/AmountInput'
+import FormToggle from '@/shared/components/FormToggle'
 import { useT } from '@/shared/i18n'
 import type { useTransactionForm } from './useTransactionForm'
 import type { Holding, Asset } from '@/domain/types'
-
-// ── Toggle ────────────────────────────────────────────────────────────────────
-
-function Toggle({ on, color = 'bg-primary' }: { on: boolean; color?: string }) {
-  return (
-    <div className="relative shrink-0">
-      <div className={`h-5 w-9 rounded-full transition-colors ${on ? color : 'bg-muted'}`} />
-      <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${on ? 'left-5' : 'left-1'}`} />
-    </div>
-  )
-}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -78,12 +69,10 @@ export default function StandardTransactionForm({
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <Label htmlFor="tx-amount">Amount</Label>
-          <Input
+          <AmountInput
             id="tx-amount"
-            type="text"
-            inputMode="decimal"
             placeholder="0.00"
             {...register('amount', {
               required: true,
@@ -92,7 +81,7 @@ export default function StandardTransactionForm({
           />
           {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <Label htmlFor="tx-date">Date</Label>
           <Input id="tx-date" type="date" {...register('date', { required: true })} />
         </div>
@@ -104,7 +93,7 @@ export default function StandardTransactionForm({
         onChange={v => setValue('category', v)}
       />
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <Label htmlFor="tx-desc">Description</Label>
         <Input id="tx-desc" placeholder="e.g. Electricity bill" {...register('description')} />
       </div>
@@ -135,7 +124,7 @@ export default function StandardTransactionForm({
             <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
             <p className="text-xs text-muted-foreground mt-1">{t('transactions.reimbursableDesc')}</p>
           </div>
-          <Toggle on={isReimbursable} color="bg-amber-500" />
+          <FormToggle on={isReimbursable} color="bg-amber-500" />
         </label>
       )}
 
@@ -195,7 +184,7 @@ function SharedToggle({
           <p className="text-sm font-medium leading-none">{t('transactions.sharedWithParticipants')}</p>
           <p className="text-xs text-muted-foreground mt-1">{t('transactions.sharedWithParticipantsDesc')}</p>
         </div>
-        <Toggle on={isShared} />
+        <FormToggle on={isShared} />
       </label>
 
       {isShared && (

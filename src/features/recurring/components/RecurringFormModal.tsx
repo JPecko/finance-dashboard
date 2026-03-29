@@ -6,7 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
+import PlainSelect from '@/shared/components/PlainSelect'
+import AmountInput from '@/shared/components/AmountInput'
+import FormToggle from '@/shared/components/FormToggle'
 import BankLogo from '@/shared/components/BankLogo'
 import { BANK_OPTIONS } from '@/shared/config/banks'
 import { toCents, fromCents } from '@/domain/money'
@@ -16,6 +18,8 @@ import { addRule, updateRule } from '@/shared/hooks/useRecurringRules'
 import type { RecurringRule, TransactionType, RecurringFrequency, Account } from '@/domain/types'
 import { useT } from '@/shared/i18n'
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 const TYPE_ICONS: Record<string, React.ElementType> = {
   checking:   Banknote,
   savings:    PiggyBank,
@@ -24,46 +28,65 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   credit:     CreditCard,
 }
 
-function AccountOption({ account }: { account: Account }) {
+function AccountOptionContent({ account }: { account: Account }) {
   const bank = account.bankCode ? BANK_OPTIONS.find(b => b.code === account.bankCode) : undefined
   const Icon = TYPE_ICONS[account.type] ?? Wallet
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex items-center gap-2 min-w-0">
       {bank
         ? <BankLogo domain={bank.logoDomain} name={bank.name} accountType={account.type} imgClassName="h-4 w-4 rounded-sm object-contain shrink-0" iconClassName="h-4 w-4 shrink-0 text-muted-foreground" />
         : <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       }
-      {account.name}
+      <span className="truncate">{account.name}</span>
     </span>
   )
 }
 
-interface FormValues {
-  accountId:    string
-  toAccountId:  string
-  name:         string
-  type:         TransactionType
-  amount:       string
-  category:     string
-  description:  string
-  frequency:    RecurringFrequency
-  startDate:    string
-  isShared:       boolean
-  splitN:         number
-  isReimbursable: boolean
+function buildAccountOption(account: Account) {
+  return {
+    value: String(account.id),
+    label: account.name,
+    content: <AccountOptionContent account={account} />,
+    selectedContent: <AccountOptionContent account={account} />,
+  }
 }
 
-interface Props {
-  open: boolean
-  onClose: () => void
-  rule?: RecurringRule
-}
+const FREQ_OPTIONS = [
+  { value: 'weekly',  label: 'Weekly'  },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly',  label: 'Yearly'  },
+]
 
 const TYPE_OPTIONS: { value: TransactionType; label: string; active: string; inactive: string }[] = [
   { value: 'expense',  label: 'Expense',  active: 'bg-rose-600 text-white',    inactive: 'bg-transparent text-muted-foreground hover:bg-muted' },
   { value: 'income',   label: 'Income',   active: 'bg-emerald-600 text-white', inactive: 'bg-transparent text-muted-foreground hover:bg-muted' },
   { value: 'transfer', label: 'Transfer', active: 'bg-blue-600 text-white',    inactive: 'bg-transparent text-muted-foreground hover:bg-muted' },
 ]
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface FormValues {
+  accountId:      string
+  toAccountId:    string
+  name:           string
+  type:           TransactionType
+  amount:         string
+  category:       string
+  description:    string
+  frequency:      RecurringFrequency
+  startDate:      string
+  isShared:       boolean
+  splitN:         number
+  isReimbursable: boolean
+}
+
+interface Props {
+  open:    boolean
+  onClose: () => void
+  rule?:   RecurringRule
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function RecurringFormModal({ open, onClose, rule }: Props) {
   const t      = useT()
@@ -72,15 +95,15 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
-      accountId:    '',
-      toAccountId:  '',
-      name:         '',
-      type:         'expense',
-      amount:       '',
-      category:     'other',
-      description:  '',
-      frequency:    'monthly',
-      startDate:    format(new Date(), 'yyyy-MM-dd'),
+      accountId:      '',
+      toAccountId:    '',
+      name:           '',
+      type:           'expense',
+      amount:         '',
+      category:       'other',
+      description:    '',
+      frequency:      'monthly',
+      startDate:      format(new Date(), 'yyyy-MM-dd'),
       isShared:       true,
       splitN:         2,
       isReimbursable: false,
@@ -102,18 +125,29 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
     selectedType === 'transfer' ? CATEGORIES.filter(c => ['invest-move', 'transfer', 'capital', 'other'].includes(c.id)) :
     EXPENSE_CATEGORIES
 
+  const categoryOptions = categories.map(c => ({
+    value: c.id,
+    label: tCategory(c.id, t),
+    content: (
+      <span className="flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+        {tCategory(c.id, t)}
+      </span>
+    ),
+  }))
+
   useEffect(() => {
     if (open && rule) {
       reset({
-        accountId:    String(rule.accountId),
-        toAccountId:  rule.toAccountId != null ? String(rule.toAccountId) : '',
-        name:         rule.name,
-        type:         rule.type,
-        amount:       Math.abs(fromCents(rule.amount)).toFixed(2),
-        category:     rule.category,
-        description:  rule.description,
-        frequency:    rule.frequency,
-        startDate:    rule.startDate,
+        accountId:      String(rule.accountId),
+        toAccountId:    rule.toAccountId != null ? String(rule.toAccountId) : '',
+        name:           rule.name,
+        type:           rule.type,
+        amount:         Math.abs(fromCents(rule.amount)).toFixed(2),
+        category:       rule.category,
+        description:    rule.description,
+        frequency:      rule.frequency,
+        startDate:      rule.startDate,
         isShared:       !(rule.isPersonal ?? false),
         splitN:         rule.splitN ?? 2,
         isReimbursable: rule.isReimbursable ?? false,
@@ -124,15 +158,15 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
       const firstAcct   = accounts.find(a => String(a.id) === firstId)
       const firstShared = (firstAcct?.participants ?? 1) > 1
       reset({
-        accountId:    firstId,
-        toAccountId:  secondId,
-        name:         '',
-        type:         'expense',
-        amount:       '',
-        category:     'other',
-        description:  '',
-        frequency:    'monthly',
-        startDate:    format(new Date(), 'yyyy-MM-dd'),
+        accountId:      firstId,
+        toAccountId:    secondId,
+        name:           '',
+        type:           'expense',
+        amount:         '',
+        category:       'other',
+        description:    '',
+        frequency:      'monthly',
+        startDate:      format(new Date(), 'yyyy-MM-dd'),
         isShared:       firstShared,
         splitN:         firstShared ? (firstAcct!.participants ?? 2) : 2,
         isReimbursable: false,
@@ -140,14 +174,13 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
     }
   }, [open, rule, accounts, reset])
 
-  // Reset category + personal flag when switching type
-  const handleTypeChange = (t: TransactionType) => {
-    setValue('type', t)
-    setValue('category', t === 'transfer' ? 'transfer' : 'other')
-    if (t === 'income') {
+  const handleTypeChange = (type: TransactionType) => {
+    setValue('type', type)
+    setValue('category', type === 'transfer' ? 'transfer' : 'other')
+    if (type === 'income') {
       setValue('isShared', false)
       setValue('splitN', 2)
-    } else if (t !== 'transfer') {
+    } else if (type !== 'transfer') {
       const acct   = accounts.find(a => String(a.id) === selectedAccount)
       const shared = (acct?.participants ?? 1) > 1
       setValue('isShared', shared)
@@ -156,21 +189,21 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
   }
 
   const onSubmit = async (values: FormValues) => {
-    const abs = toCents(parseFloat(values.amount.replace(',', '.')) || 0)
-    const amount = values.type === 'income' ? abs : -abs // transfer also stored negative
+    const abs    = toCents(parseFloat(values.amount.replace(',', '.')) || 0)
+    const amount = values.type === 'income' ? abs : -abs
 
     const payload: Omit<RecurringRule, 'id' | 'createdAt'> = {
-      accountId:    parseInt(values.accountId),
-      toAccountId:  isTransfer && values.toAccountId ? parseInt(values.toAccountId) : undefined,
-      name:         values.name.trim(),
-      type:         values.type,
+      accountId:      parseInt(values.accountId),
+      toAccountId:    isTransfer && values.toAccountId ? parseInt(values.toAccountId) : undefined,
+      name:           values.name.trim(),
+      type:           values.type,
       amount,
-      category:     values.category,
-      description:  values.description.trim(),
-      frequency:    values.frequency,
-      startDate:    values.startDate,
-      nextDue:      values.startDate,
-      active:       true,
+      category:       values.category,
+      description:    values.description.trim(),
+      frequency:      values.frequency,
+      startDate:      values.startDate,
+      nextDue:        values.startDate,
+      active:         true,
       isPersonal:     isTransfer ? false : !values.isShared,
       splitN:         (!isTransfer && values.isShared) ? Math.max(2, Math.round(values.splitN ?? 2)) : null,
       isReimbursable: !isTransfer && values.isReimbursable,
@@ -186,7 +219,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Recurring Rule' : 'New Recurring Rule'}</DialogTitle>
         </DialogHeader>
@@ -194,7 +227,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
 
           {/* Name */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label htmlFor="rec-name">Rule Name</Label>
             <Input
               id="rec-name"
@@ -222,66 +255,52 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
 
           {/* Account(s) */}
           {isTransfer ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>From</Label>
-                <Select value={selectedAccount} onValueChange={v => setValue('accountId', v)}>
-                  <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
-                  <SelectContent>
-                    {accounts.filter(a => String(a.id) !== selectedTo).map(a => (
-                      <SelectItem key={a.id} value={String(a.id)}>
-                        <AccountOption account={a} />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PlainSelect
+                  value={selectedAccount}
+                  onChange={v => setValue('accountId', v)}
+                  options={accounts.filter(a => String(a.id) !== selectedTo).map(buildAccountOption)}
+                  placeholder="Source"
+                />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label>To</Label>
-                <Select value={selectedTo} onValueChange={v => setValue('toAccountId', v)}>
-                  <SelectTrigger><SelectValue placeholder="Destination" /></SelectTrigger>
-                  <SelectContent>
-                    {accounts.filter(a => String(a.id) !== selectedAccount).map(a => (
-                      <SelectItem key={a.id} value={String(a.id)}>
-                        <AccountOption account={a} />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PlainSelect
+                  value={selectedTo}
+                  onChange={v => setValue('toAccountId', v)}
+                  options={accounts.filter(a => String(a.id) !== selectedAccount).map(buildAccountOption)}
+                  placeholder="Destination"
+                />
               </div>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Account</Label>
-              <Select value={selectedAccount} onValueChange={v => {
-                setValue('accountId', v)
-                if (selectedType !== 'income') {
-                  const acct   = accounts.find(a => String(a.id) === v)
-                  const shared = (acct?.participants ?? 1) > 1
-                  setValue('isShared', shared)
-                  setValue('splitN', shared ? (acct!.participants ?? 2) : 2)
-                }
-              }}>
-                <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
-                <SelectContent>
-                  {accounts.map(a => (
-                    <SelectItem key={a.id} value={String(a.id)}>
-                      <AccountOption account={a} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PlainSelect
+                value={selectedAccount}
+                onChange={v => {
+                  setValue('accountId', v)
+                  if (selectedType !== 'income') {
+                    const acct   = accounts.find(a => String(a.id) === v)
+                    const shared = (acct?.participants ?? 1) > 1
+                    setValue('isShared', shared)
+                    setValue('splitN', shared ? (acct!.participants ?? 2) : 2)
+                  }
+                }}
+                options={accounts.map(buildAccountOption)}
+                placeholder="Select account"
+              />
             </div>
           )}
 
           {/* Amount + Frequency */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
               <Label htmlFor="rec-amount">Amount</Label>
-              <Input
+              <AmountInput
                 id="rec-amount"
-                type="text"
-                inputMode="decimal"
                 placeholder="0.00"
                 {...register('amount', {
                   required: 'Required',
@@ -290,44 +309,33 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
               />
               {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Frequency</Label>
-              <Select value={selectedFreq} onValueChange={v => setValue('frequency', v as RecurringFrequency)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
+              <PlainSelect
+                value={selectedFreq}
+                onChange={v => setValue('frequency', v as RecurringFrequency)}
+                options={FREQ_OPTIONS}
+              />
             </div>
           </div>
 
           {/* Category */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label>Category</Label>
-            <Select value={selectedCategory} onValueChange={v => setValue('category', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {categories.map(c => (
-                  <SelectItem key={c.id} value={c.id}>
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
-                      {tCategory(c.id, t)}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PlainSelect
+              value={selectedCategory}
+              onChange={v => setValue('category', v)}
+              options={categoryOptions}
+            />
           </div>
 
           {/* Description + Start Date */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
               <Label htmlFor="rec-desc">Description</Label>
               <Input id="rec-desc" placeholder="Optional" {...register('description')} />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="rec-start">Start Date</Label>
               <Input id="rec-start" type="date" {...register('startDate', { required: true })} />
             </div>
@@ -343,10 +351,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
                   <p className="text-sm font-medium leading-none">{t('recurring.sharedWithParticipants')}</p>
                   <p className="text-xs text-muted-foreground mt-1">{t('recurring.sharedWithParticipantsDesc')}</p>
                 </div>
-                <div className="relative shrink-0">
-                  <div className={`h-5 w-9 rounded-full transition-colors ${isShared ? 'bg-primary' : 'bg-muted'}`} />
-                  <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${isShared ? 'left-5' : 'left-1'}`} />
-                </div>
+                <FormToggle on={isShared} />
               </label>
               {isShared && (
                 <div className="flex items-center gap-2 px-4 py-2.5 border-t bg-muted/30">
@@ -360,7 +365,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
                   />
                   <span className="text-xs text-muted-foreground">
                     {t('transactions.people')}
-                    {isShared && (splitN ?? 2) >= 2 && (
+                    {(splitN ?? 2) >= 2 && (
                       <span className="ml-1 text-muted-foreground/60">
                         · {t('transactions.myShare')}: {Math.round(100 / (splitN ?? 2))}%
                       </span>
@@ -380,10 +385,7 @@ export default function RecurringFormModal({ open, onClose, rule }: Props) {
                 <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
                 <p className="text-xs text-muted-foreground mt-1">{t('transactions.reimbursableDesc')}</p>
               </div>
-              <div className="relative shrink-0">
-                <div className={`h-5 w-9 rounded-full transition-colors ${isReimbursable ? 'bg-amber-500' : 'bg-muted'}`} />
-                <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${isReimbursable ? 'left-5' : 'left-1'}`} />
-              </div>
+              <FormToggle on={isReimbursable} color="bg-amber-500" />
             </label>
           )}
 

@@ -4,9 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
+import { cn } from '@/lib/utils'
+import PlainSelect from '@/shared/components/PlainSelect'
+import AmountInput from '@/shared/components/AmountInput'
+import FormToggle from '@/shared/components/FormToggle'
 import { toCents, fromCents } from '@/domain/money'
-import { CATEGORIES } from '@/domain/categories'
+import { CATEGORIES, tCategory } from '@/domain/categories'
 import { addGroupEntry, updateGroupEntry } from '@/shared/hooks/useGroups'
 import { addTransaction } from '@/shared/hooks/useTransactions'
 import { useSortedAccounts } from '@/shared/hooks/useAccounts'
@@ -14,37 +17,9 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useT } from '@/shared/i18n'
 import type { GroupEntry, GroupEntrySplit, GroupMember } from '@/domain/types'
 
-function Toggle({ on }: { on: boolean }) {
-  return (
-    <div className="relative shrink-0">
-      <div className={`h-5 w-9 rounded-full transition-colors ${on ? 'bg-primary' : 'bg-muted'}`} />
-      <div className={`absolute top-1 h-3 w-3 rounded-full bg-white transition-transform ${on ? 'left-5' : 'left-1'}`} />
-    </div>
-  )
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-interface FormValues {
-  description: string
-  date: string
-  category: string
-  totalAmount: string
-  paidByMemberId: string
-  notes: string
-}
-
-interface SplitRow {
-  memberId: number
-  amount: string  // display euros, converted on save
-}
-
-interface Props {
-  open:     boolean
-  onClose:  () => void
-  groupId:  number
-  members:  GroupMember[]
-  entry?:   GroupEntry
-  existingSplits?: GroupEntrySplit[]
-}
+const parseMoney = (v: string) => parseFloat(String(v).replace(',', '.')) || 0
 
 function today() {
   return new Date().toISOString().slice(0, 10)
@@ -58,6 +33,33 @@ function distributeEvenly(totalCents: number, memberIds: number[]): Record<numbe
     memberIds.map((id, i) => [id, i < remainder ? base + 1 : base])
   )
 }
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface FormValues {
+  description:    string
+  date:           string
+  category:       string
+  totalAmount:    string
+  paidByMemberId: string
+  notes:          string
+}
+
+interface SplitRow {
+  memberId: number
+  amount:   string
+}
+
+interface Props {
+  open:            boolean
+  onClose:         () => void
+  groupId:         number
+  members:         GroupMember[]
+  entry?:          GroupEntry
+  existingSplits?: GroupEntrySplit[]
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function GroupEntryModal({ open, onClose, groupId, members, entry, existingSplits }: Props) {
   const t      = useT()
@@ -82,7 +84,12 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
   const [createTx,    setCreateTx]    = useState(false)
   const [txAccountId, setTxAccountId] = useState('')
 
-  // Initialise when modal opens
+  const categoryOptions  = CATEGORIES.map(c => ({ value: c.id, label: tCategory(c.id, t) }))
+  const memberOptions    = members.map(m => ({ value: String(m.id), label: m.name }))
+  const accountOptions   = accounts.map(acc => ({ value: String(acc.id), label: acc.name }))
+
+  // ── Initialise when modal opens ───────────────────────────────────────────
+
   useEffect(() => {
     if (!open) return
 
@@ -124,23 +131,26 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
     setTxAccountId(accounts[0]?.id ? String(accounts[0].id) : '')
   }, [open, entry, existingSplits, members, isEdit, reset, accounts])
 
-  // When total changes in 'even' mode, recompute split previews
+  // ── Recompute even splits when total changes ──────────────────────────────
+
   const totalAmountStr = watch('totalAmount')
   useEffect(() => {
     if (splitMode !== 'even') return
-    const totalCents = toCents(parseFloat(totalAmountStr) || 0)
-    const distributed = distributeEvenly(totalCents, members.map(m => m.id!))
+    const totalCents   = toCents(parseMoney(totalAmountStr))
+    const distributed  = distributeEvenly(totalCents, members.map(m => m.id!))
     setSplits(members.map(m => ({
       memberId: m.id!,
       amount:   fromCents(distributed[m.id!] ?? 0).toFixed(2),
     })))
   }, [totalAmountStr, splitMode, members])
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
   function handleSplitModeChange(mode: 'even' | 'custom') {
     setSplitMode(mode)
     setSplitError('')
     if (mode === 'even') {
-      const totalCents = toCents(parseFloat(totalAmountStr) || 0)
+      const totalCents  = toCents(parseMoney(totalAmountStr))
       const distributed = distributeEvenly(totalCents, members.map(m => m.id!))
       setSplits(members.map(m => ({
         memberId: m.id!,
@@ -158,16 +168,14 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
     if (!user) return
     setSplitError('')
 
-    const totalCents = toCents(parseFloat(values.totalAmount) || 0)
+    const totalCents = toCents(parseMoney(values.totalAmount))
     if (totalCents <= 0) return
 
-    // Build split cents
     const splitCents = splits.map(s => ({
       memberId: s.memberId,
-      amount:   toCents(parseFloat(s.amount) || 0),
+      amount:   toCents(parseMoney(s.amount)),
     }))
 
-    // Validate sum
     const splitSum = splitCents.reduce((sum, s) => sum + s.amount, 0)
     if (Math.abs(splitSum - totalCents) > members.length) {
       setSplitError(t('groups.splitSumMismatch'))
@@ -175,18 +183,18 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
     }
 
     const entryData = {
-      groupId:          groupId,
-      description:      values.description.trim(),
-      date:             values.date,
-      category:         values.category,
-      totalAmount:      totalCents,
-      paidByMemberId:   parseInt(values.paidByMemberId),
-      notes:            values.notes.trim() || undefined,
-      createdBy:        user.id,
+      groupId:        groupId,
+      description:    values.description.trim(),
+      date:           values.date,
+      category:       values.category,
+      totalAmount:    totalCents,
+      paidByMemberId: parseInt(values.paidByMemberId),
+      notes:          values.notes.trim() || undefined,
+      createdBy:      user.id,
     }
 
     const splitsData: Omit<GroupEntrySplit, 'id'>[] = splitCents.map(s => ({
-      entryId:  entry?.id ?? 0,   // will be replaced inside addGroupEntry
+      entryId:  entry?.id ?? 0,
       memberId: s.memberId,
       amount:   s.amount,
     }))
@@ -223,9 +231,9 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="description">{t('transactions.colDescription')}</Label>
+            <Label htmlFor="ge-description">{t('transactions.colDescription')}</Label>
             <Input
-              id="description"
+              id="ge-description"
               placeholder="Dinner, taxi, groceries..."
               {...register('description', { required: true })}
               className={errors.description ? 'border-destructive' : ''}
@@ -233,52 +241,43 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
           </div>
 
           {/* Date + Category */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="date">{t('transactions.colDate')}</Label>
-              <Input id="date" type="date" {...register('date', { required: true })} />
+              <Label htmlFor="ge-date">{t('transactions.colDate')}</Label>
+              <Input id="ge-date" type="date" {...register('date', { required: true })} />
             </div>
             <div className="space-y-1.5">
               <Label>{t('transactions.category')}</Label>
-              <Select value={watch('category')} onValueChange={v => setValue('category', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PlainSelect
+                value={watch('category')}
+                onChange={v => setValue('category', v)}
+                options={categoryOptions}
+              />
             </div>
           </div>
 
           {/* Total amount + Paid by */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="totalAmount">{t('groups.totalAmount')}</Label>
-              <Input
-                id="totalAmount"
-                type="number"
-                step="0.01"
-                min="0.01"
+              <Label htmlFor="ge-total">{t('groups.totalAmount')}</Label>
+              <AmountInput
+                id="ge-total"
                 placeholder="0.00"
-                {...register('totalAmount', { required: true, min: 0.01 })}
+                {...register('totalAmount', {
+                  required: true,
+                  validate: v => parseMoney(v) >= 0.01 || 'Must be > 0',
+                })}
                 className={errors.totalAmount ? 'border-destructive' : ''}
               />
             </div>
             <div className="space-y-1.5">
               <Label>{t('groups.paidBy')}</Label>
-              <Select value={watch('paidByMemberId')} onValueChange={v => setValue('paidByMemberId', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Who paid?" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members.map(m => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PlainSelect
+                value={watch('paidByMemberId')}
+                onChange={v => setValue('paidByMemberId', v)}
+                options={memberOptions}
+                placeholder="Who paid?"
+              />
             </div>
           </div>
 
@@ -304,22 +303,16 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
               </div>
             </div>
 
-            {/* Split rows */}
             <div className="space-y-2 rounded-lg border p-3">
               {splits.map(split => (
                 <div key={split.memberId} className="flex items-center gap-3">
                   <span className="flex-1 text-sm truncate">{memberById[split.memberId]?.name ?? '?'}</span>
-                  <div className="w-28">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={split.amount}
-                      onChange={e => handleSplitAmountChange(split.memberId, e.target.value)}
-                      readOnly={splitMode === 'even'}
-                      className={`text-right ${splitMode === 'even' ? 'bg-muted text-muted-foreground' : ''}`}
-                    />
-                  </div>
+                  <AmountInput
+                    value={split.amount}
+                    onChange={e => handleSplitAmountChange(split.memberId, e.target.value)}
+                    readOnly={splitMode === 'even'}
+                    className={cn('w-28 text-right', splitMode === 'even' && 'bg-muted text-muted-foreground')}
+                  />
                 </div>
               ))}
             </div>
@@ -328,11 +321,11 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Input id="notes" placeholder="Optional note..." {...register('notes')} />
+            <Label htmlFor="ge-notes">Notes (optional)</Label>
+            <Input id="ge-notes" placeholder="Optional note..." {...register('notes')} />
           </div>
 
-          {/* Create bank transaction - create mode only */}
+          {/* Create bank transaction — create mode only */}
           {!isEdit && (
             <>
               <label
@@ -343,19 +336,17 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
                   <p className="text-sm font-medium leading-none">{t('transactions.reimbursable')}</p>
                   <p className="text-xs text-muted-foreground mt-1">{t('groups.debitAccount')}</p>
                 </div>
-                <Toggle on={createTx} />
+                <FormToggle on={createTx} />
               </label>
               {createTx && (
                 <div className="space-y-1.5">
                   <Label>{t('groups.debitAccount')}</Label>
-                  <Select value={txAccountId} onValueChange={setTxAccountId}>
-                    <SelectTrigger><SelectValue placeholder="Select account..." /></SelectTrigger>
-                    <SelectContent>
-                      {accounts.map(acc => (
-                        <SelectItem key={acc.id} value={String(acc.id)}>{acc.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <PlainSelect
+                    value={txAccountId}
+                    onChange={setTxAccountId}
+                    options={accountOptions}
+                    placeholder="Select account..."
+                  />
                 </div>
               )}
             </>
