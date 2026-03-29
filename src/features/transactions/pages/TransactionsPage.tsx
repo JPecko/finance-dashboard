@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { Plus, ArrowLeftRight, ChevronLeft, ChevronRight, SlidersHorizontal, Check, X, Building2, Shapes } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, ArrowLeftRight, ChevronLeft, ChevronRight, SlidersHorizontal, Check, X, Building2, Shapes, RefreshCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Separator } from "@/shared/components/ui/separator";
@@ -19,6 +20,7 @@ import { getCategoryById, tCategory } from "@/domain/categories";
 export default function TransactionsPage() {
   const t = useT()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const {
     currentDate,
     modalOpen,
@@ -64,15 +66,20 @@ export default function TransactionsPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold">{t('transactions.title')}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{format(currentDate, "MMMM yyyy")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={openCreateModal}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t('transactions.addTransaction')}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => navigate('/recurring')}>
+            <RefreshCw className="h-4 w-4" />
+            {t('nav.recurring')}
+          </Button>
+          <Button size="sm" onClick={openCreateModal}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('transactions.addTransaction')}</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         </div>
       </div>
