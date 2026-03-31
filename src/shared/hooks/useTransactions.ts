@@ -7,6 +7,7 @@ import { queryClient } from '@/app/queryClient'
 import { queryKeys } from '@/data/queryKeys'
 import { useAccounts } from '@/shared/hooks/useAccounts'
 import { useSharedExpensesByMonth } from '@/shared/hooks/useSharedExpenses'
+import { useMyGroupExpenses } from '@/shared/hooks/useGroups'
 import { useAuth } from '@/features/auth/AuthContext'
 import { effectOnInvestmentAccount } from '@/features/investments/utils/investmentMetrics'
 import type { Transaction, Account } from '@/domain/types'
@@ -140,6 +141,7 @@ export function useMonthSummary(year: number, month: number) {
   const { data: txs            = [] } = useTransactionsByMonth(year, month)
   const { data: accounts       = [] } = useAccounts()
   const { data: sharedExpenses = [] } = useSharedExpensesByMonth(year, month)
+  const { data: groupExpenses  = [] } = useMyGroupExpenses(year, month)
 
   const real         = txs.filter(isCashFlow)
   const income       = real.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
@@ -170,9 +172,16 @@ export function useMonthSummary(year: number, month: number) {
     .filter(se => se.payer === 'other' && se.status === 'open')
     .reduce((s, se) => s + se.myShare, 0)
 
+  // Group entries where someone else paid — user's share counts as personal expense.
+  // Settlement transactions already have isReimbursable=true and are excluded from cashflow,
+  // so there is no double-counting when the debt is later settled.
+  const groupPersonal = groupExpenses
+    .filter(g => !g.paidByMe)
+    .reduce((s, g) => s + g.myShare, 0)
+
   const personalExpenses = real
     .filter(t => t.amount < 0)
-    .reduce((s, t) => s + personalAmountOf(t), 0) - sharedPersonal
+    .reduce((s, t) => s + personalAmountOf(t), 0) - sharedPersonal - groupPersonal
 
   const personalIncome = real
     .filter(t => t.amount > 0)
@@ -195,6 +204,7 @@ export function useMonthSummary(year: number, month: number) {
     personalIncome, personalExpenses, personalBalance: personalIncome + personalExpenses,
     personalInvesting, personalRoundup,
     marketGain, sharedPending,
+    groupExpenses,
   }
 }
 

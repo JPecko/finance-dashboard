@@ -148,6 +148,10 @@ export default function DashboardPage() {
     for (const se of sharedExpenses.filter(e => e.payer === 'other' && e.status !== 'ignored')) {
       map[se.category] = (map[se.category] ?? 0) + se.myShare
     }
+    // Add group entries where someone else paid — user's share counts as personal expense
+    for (const g of summary.groupExpenses.filter(g => !g.paidByMe)) {
+      map[g.category] = (map[g.category] ?? 0) + g.myShare
+    }
     return Object.entries(map)
       .map(([id, value]) => { const cat = getCategoryById(id); return { id, name: tCategory(id, t), value, color: cat.color } })
       .sort((a, b) => b.value - a.value)
