@@ -152,6 +152,12 @@ export default function DashboardPage() {
     for (const g of summary.groupExpenses.filter(g => !g.paidByMe)) {
       map[g.category] = (map[g.category] ?? 0) + g.myShare
     }
+    // invest-move transfers are excluded from isCashFlow but count as investing
+    for (const tx of transactions.filter(t => t.type === 'transfer' && t.category === 'invest-move' && t.amount < 0)) {
+      const divisor = personalDivisorFor(tx, user?.id, accounts)
+      if (divisor === Infinity) continue
+      map['invest-move'] = (map['invest-move'] ?? 0) + Math.abs(tx.amount) / divisor
+    }
     return Object.entries(map)
       .map(([id, value]) => { const cat = getCategoryById(id); return { id, name: tCategory(id, t), value, color: cat.color } })
       .sort((a, b) => b.value - a.value)

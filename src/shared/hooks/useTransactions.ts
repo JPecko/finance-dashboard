@@ -97,9 +97,14 @@ export function useMonthlyNetFlow(year: number, month: number) {
       const result: { month: string; income: number; expenses: number; investing: number; roundup: number; net: number }[] = []
       for (let i = 5; i >= 0; i--) {
         const d    = new Date(year, month - 1 - i, 1)
-        const cash = (await transactionsRepo.getByMonth(getYear(d), getMonth(d) + 1)).filter(isCashFlow)
+        const all  = await transactionsRepo.getByMonth(getYear(d), getMonth(d) + 1)
+        const cash = all.filter(isCashFlow)
         const income    = cash.filter(t => t.amount > 0).reduce((s, t) => s + t.amount / divisorFor(t), 0)
-        const investing = cash.filter(t => t.amount < 0 && t.category === 'investing').reduce((s, t) => s + Math.abs(t.amount) / divisorFor(t), 0)
+        const investMoves = all.filter(t => t.type === 'transfer' && t.category === 'invest-move' && t.amount < 0)
+        const investing = [
+          ...cash.filter(t => t.amount < 0 && t.category === 'investing'),
+          ...investMoves,
+        ].reduce((s, t) => s + Math.abs(t.amount) / divisorFor(t), 0)
         const roundup   = cash.filter(t => t.amount < 0 && t.category === 'roundup').reduce((s, t) => s + Math.abs(t.amount) / divisorFor(t), 0)
         const expenses  = cash.filter(t => t.amount < 0 && t.category !== 'investing' && t.category !== 'roundup').reduce((s, t) => s + Math.abs(t.amount) / divisorFor(t), 0)
         result.push({ month: format(d, 'MMM yy'), income, expenses, investing, roundup, net: income - expenses - investing - roundup })
@@ -179,17 +184,21 @@ export function useMonthSummary(year: number, month: number) {
     .filter(g => !g.paidByMe)
     .reduce((s, g) => s + g.myShare, 0)
 
-  const personalExpenses = real
-    .filter(t => t.amount < 0)
-    .reduce((s, t) => s + personalAmountOf(t), 0) - sharedPersonal - groupPersonal
+  const investMoveOutflows = txs.filter(t => t.type === 'transfer' && t.category === 'invest-move' && t.amount < 0)
+
+  const personalExpenses = [
+    ...real.filter(t => t.amount < 0),
+    ...investMoveOutflows,
+  ].reduce((s, t) => s + personalAmountOf(t), 0) - sharedPersonal - groupPersonal
 
   const personalIncome = real
     .filter(t => t.amount > 0)
     .reduce((s, t) => s + t.amount / divisorFor(t), 0)
 
-  const personalInvesting = real
-    .filter(t => t.amount < 0 && t.category === 'investing')
-    .reduce((s, t) => s + personalAmountOf(t), 0)
+  const personalInvesting = [
+    ...real.filter(t => t.amount < 0 && t.category === 'investing'),
+    ...txs.filter(t => t.type === 'transfer' && t.category === 'invest-move' && t.amount < 0),
+  ].reduce((s, t) => s + personalAmountOf(t), 0)
 
   const personalRoundup = real
     .filter(t => t.amount < 0 && t.category === 'roundup')
