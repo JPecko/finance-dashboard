@@ -18,7 +18,7 @@ interface Props {
   accountsById: Record<number, Account>
 }
 
-function GroupExpenseDescription({ item }: Props) {
+function GroupExpenseDescription({ item }: { item: GroupExpenseItem }) {
   return (
     <div className="min-w-0">
       <p className="truncate text-sm font-semibold leading-snug">{item.description || '—'}</p>
