@@ -2,6 +2,12 @@
 
 Dashboard de financas pessoais construído com React, TypeScript e Vite.
 
+## Instruções para agentes
+
+Antes de qualquer tarefa, ler `CLAUDE.md`.
+
+Esse é o ficheiro principal de instruções do projeto para arquitetura, convenções de implementação, prioridades mobile-first e compatibilidade PWA.
+
 O foco da app é gestão financeira pessoal com suporte para:
 - contas bancárias e cash
 - transações manuais e transferências
