@@ -36,7 +36,7 @@ interface Props {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const pnlCls = (v: number) => v >= 0 ? 'text-emerald-600' : 'text-red-500'
-const fmtQty = (q: number) => q % 1 === 0 ? q.toFixed(0) : q.toFixed(4)
+const fmtQty = (q: number) => q % 1 === 0 ? q.toFixed(0) : parseFloat(q.toFixed(6)).toString()
 const sign   = (v: number) => v >= 0 ? '+' : ''
 
 // ── AccountHeader ─────────────────────────────────────────────────────────────
