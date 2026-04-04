@@ -4,8 +4,8 @@ import {
   Sun, Moon, Monitor,
 } from 'lucide-react'
 import { useThemeStore } from '@/shared/store/themeStore'
-import { useLanguageStore } from '@/shared/store/languageStore'
 import { useT } from '@/shared/i18n'
+import LanguageSelect from '@/shared/components/LanguageSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
@@ -22,7 +22,6 @@ import { transactionsToCSV, downloadFile, exportFilename } from '@/shared/utils/
 export default function SettingsPage() {
   const { user } = useAuth()
   const { theme, setTheme } = useThemeStore()
-  const { lang, setLang } = useLanguageStore()
   const t = useT()
   const importRef  = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -293,20 +292,7 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-medium">{t('settings.language')}</p>
             </div>
-            <div className="flex items-center gap-1 rounded-lg border border-border p-1">
-              <button
-                onClick={() => setLang('en')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${lang === 'en' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setLang('pt')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${lang === 'pt' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                PT
-              </button>
-            </div>
+            <LanguageSelect size="default" />
           </div>
         </CardContent>
       </Card>

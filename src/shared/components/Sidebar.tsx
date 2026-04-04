@@ -1,8 +1,8 @@
 import { useNavigate, NavLink } from 'react-router-dom'
-import { Sun, Moon, LogOut, Settings, Languages } from 'lucide-react'
+import { Sun, Moon, LogOut, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useThemeStore } from '@/shared/store/themeStore'
-import { useLanguageStore } from '@/shared/store/languageStore'
+import LanguageSelect from '@/shared/components/LanguageSelect'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/data/supabase'
 import { navItems } from '@/shared/config/nav'
@@ -18,7 +18,6 @@ import { hasAppUpdate } from '@/shared/utils/checkForAppUpdate'
 
 export default function Sidebar() {
   const { theme, toggle } = useThemeStore()
-  const { lang, setLang } = useLanguageStore()
   const { user } = useAuth()
   const navigate = useNavigate()
   const t = useT()
@@ -86,15 +85,7 @@ export default function Sidebar() {
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
-          {/* Language toggle */}
-          <button
-            onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}
-            className="flex h-7 items-center gap-1 px-2 rounded-md text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors cursor-pointer"
-            aria-label={t('sidebar.language')}
-          >
-            <Languages className="h-3.5 w-3.5" />
-            {lang.toUpperCase()}
-          </button>
+          <LanguageSelect dropUp />
         </div>
 
         {/* Avatar — opens profile menu */}
@@ -116,11 +107,6 @@ export default function Sidebar() {
                 ? <Sun className="h-4 w-4 mr-2" />
                 : <Moon className="h-4 w-4 mr-2" />}
               {t(theme === 'dark' ? 'sidebar.themeLight' : 'sidebar.themeDark')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}>
-              <Languages className="h-4 w-4 mr-2" />
-              {t('sidebar.language')}
-              <span className="ml-auto text-xs text-muted-foreground">{lang.toUpperCase()}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/settings')}>

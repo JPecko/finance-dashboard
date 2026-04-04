@@ -1,7 +1,7 @@
 import { useNavigate, NavLink } from 'react-router-dom' // useNavigate kept for handleLogoClick
-import { Sun, Moon, LogOut, Settings, Languages } from 'lucide-react'
+import { Sun, Moon, LogOut, Settings } from 'lucide-react'
 import { useThemeStore } from '@/shared/store/themeStore'
-import { useLanguageStore } from '@/shared/store/languageStore'
+import LanguageSelect from '@/shared/components/LanguageSelect'
 import { useAuth } from '@/features/auth/AuthContext'
 import { supabase } from '@/data/supabase'
 import { APP_VERSION } from '@/version'
@@ -16,7 +16,6 @@ import {
 
 export default function MobileHeader() {
   const { theme, toggle } = useThemeStore()
-  const { lang, setLang } = useLanguageStore()
   const { user } = useAuth()
   const navigate = useNavigate()
   const t = useT()
@@ -47,7 +46,8 @@ export default function MobileHeader() {
         <span className="text-[10px] text-muted-foreground/60">{APP_VERSION}</span>
       </button>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <LanguageSelect />
         <NavLink
           to="/settings"
           className={({ isActive }) =>
@@ -70,11 +70,6 @@ export default function MobileHeader() {
               ? <Sun className="h-4 w-4 mr-2" />
               : <Moon className="h-4 w-4 mr-2" />}
             {t(theme === 'dark' ? 'sidebar.themeLight' : 'sidebar.themeDark')}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}>
-            <Languages className="h-4 w-4 mr-2" />
-            {t('sidebar.language')}
-            <span className="ml-auto text-xs text-muted-foreground">{lang.toUpperCase()}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => supabase.auth.signOut()} className="text-destructive focus:text-destructive">
