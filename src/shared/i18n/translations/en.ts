@@ -73,6 +73,7 @@ export const en = {
     signOut:    'Sign Out',
     comingSoon: 'Coming soon',
     open:       'Open',
+    notes:      'Notes (optional)',
   },
 
   sidebar: {

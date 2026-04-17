@@ -407,7 +407,7 @@ export default function GroupEntryModal({ open, onClose, groupId, members, entry
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="ge-notes">{t('common.notes') ?? 'Notes (optional)'}</Label>
+            <Label htmlFor="ge-notes">{t('common.notes')}</Label>
             <Input id="ge-notes" placeholder="Optional note..." {...register('notes')} />
           </div>
 

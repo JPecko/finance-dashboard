@@ -3,7 +3,6 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { DialogFooter } from '@/shared/components/ui/dialog'
-import { cn } from '@/lib/utils'
 import CategorySelect from './CategorySelect'
 import PlainSelect from '@/shared/components/PlainSelect'
 import AmountInput from '@/shared/components/AmountInput'
@@ -71,7 +70,6 @@ export default function GroupTransactionForm({
   const accountId     = watch('accountId')
   const payerMemberId = watch('payerMemberId')
   const category      = watch('category')
-  const total         = watch('totalAmount')
   const groupOptions   = groups.map(group => ({ value: String(group.id), label: group.name }))
   const accountOptions = accounts.map(buildAccountSelectOption)
   const memberOptions  = members
@@ -214,7 +212,6 @@ export default function GroupTransactionForm({
             percents={percents}
             setPercents={setPercents}
             splitError={splitError}
-            total={total}
             currentUserId={currentUserId}
             handleSwitchToPercent={handleSwitchToPercent}
           />

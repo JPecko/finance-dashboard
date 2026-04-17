@@ -75,6 +75,7 @@ export const pt: typeof en = {
     signOut:    'Sair',
     comingSoon: 'Em breve',
     open:       'Abrir',
+    notes:      'Notas (opcional)',
   },
 
   sidebar: {
