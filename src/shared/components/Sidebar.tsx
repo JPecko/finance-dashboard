@@ -40,13 +40,13 @@ export default function Sidebar() {
       <button
         type="button"
         onClick={() => { void handleLogoClick() }}
-        className="flex w-full items-center gap-2 px-6 py-2 border-b border-sidebar-border text-left cursor-pointer"
+        className="flex w-full items-end gap-2 px-6 py-2 border-b border-sidebar-border text-left cursor-pointer"
         aria-label="Check app updates"
         title="Check app updates"
       >
         <img src="/financelli-logo-light.svg" alt="Financelli" className="h-12 dark:hidden" />
         <img src="/financelli-logo-dark.svg" alt="Financelli" className="h-12 hidden dark:block" />
-        <span className="text-[10px] text-muted-foreground/60 ml-auto">{APP_VERSION}</span>
+        <span className="text-[10px] text-muted-foreground/60 ml-auto pb-1">{APP_VERSION}</span>
       </button>
 
       {/* Nav */}

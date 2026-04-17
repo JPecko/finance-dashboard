@@ -36,7 +36,7 @@ export default function MobileHeader() {
       <button
         type="button"
         onClick={() => { void handleLogoClick() }}
-        className="flex items-center gap-1 cursor-pointer"
+        className="flex items-end gap-1 cursor-pointer"
         aria-label="Check app updates"
         title="Check app updates"
       >
