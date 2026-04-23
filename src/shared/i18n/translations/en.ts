@@ -132,6 +132,13 @@ export const en = {
     recalcRoundupsConfirm:    'This will delete and recreate all roundup transactions based on current expense amounts.',
     recalcRoundupsDone:       'Done. Removed {{removed}} roundups, recreated {{created}}.',
 
+    integrations:              'Integrations',
+    integrationsDesc:          'Connect external services to enhance your experience.',
+    priceApiKey:               'Twelve Data API Key',
+    priceApiKeyDesc:           'Used to sync live asset prices automatically. Get a free key at twelvedata.com.',
+    priceApiKeyPlaceholder:    'Paste your API key here',
+    priceApiKeySaved:          'API key saved.',
+
     dangerZone:     'Danger Zone',
     dangerZoneDesc: 'These actions are permanent and cannot be undone.',
     clearData:      'Clear All Data',
@@ -394,6 +401,7 @@ export const en = {
     noAssetsToLink:       'No assets configured yet.',
     addAssetsFirst:       'Add assets above first.',
     ticker:               'Ticker',
+    label:                'Label',
     quantity:             'Quantity',
     avgCost:              'Avg. Cost',
     currentPrice:         'Current Price',
@@ -421,6 +429,11 @@ export const en = {
     forecastNominal:      'Nominal',
     forecastReal:         "Real (today's €)",
     forecastInvested:     'Total Invested',
+    syncPrices:           'Sync Prices',
+    syncing:              'Syncing...',
+    syncDone:             'Prices updated.',
+    syncNoKey:            'Add your Twelve Data API key in Settings → Integrations.',
+    syncNoTickers:        'No assets with tickers to sync.',
   },
 
   update: {

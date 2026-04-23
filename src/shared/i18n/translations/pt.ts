@@ -175,6 +175,7 @@ export const pt: typeof en = {
     noAssetsToLink:       'Ainda não há ativos configurados.',
     addAssetsFirst:       'Adiciona ativos acima primeiro.',
     ticker:               'Ticker',
+    label:                'Label',
     quantity:             'Quantidade',
     avgCost:              'Custo Médio',
     currentPrice:         'Preço Atual',
@@ -202,6 +203,11 @@ export const pt: typeof en = {
     forecastNominal:      'Nominal',
     forecastReal:         'Real (€ de hoje)',
     forecastInvested:     'Total Investido',
+    syncPrices:           'Sincronizar Preços',
+    syncing:              'A sincronizar...',
+    syncDone:             'Preços atualizados.',
+    syncNoKey:            'Adiciona a tua API key do Twelve Data em Definições → Integrações.',
+    syncNoTickers:        'Nenhum ativo com ticker para sincronizar.',
   },
 
   update: {
@@ -284,6 +290,13 @@ export const pt: typeof en = {
     recalcRoundupsBtn:        'Recalcular',
     recalcRoundupsConfirm:    'Isto irá eliminar e recriar todos os roundups com base nos valores atuais das despesas.',
     recalcRoundupsDone:       'Concluído. Removidos {{removed}} roundups, recriados {{created}}.',
+
+    integrations:              'Integrações',
+    integrationsDesc:          'Liga serviços externos para melhorar a tua experiência.',
+    priceApiKey:               'API Key do Twelve Data',
+    priceApiKeyDesc:           'Usada para sincronizar preços dos ativos automaticamente. Obtém uma chave gratuita em twelvedata.com.',
+    priceApiKeyPlaceholder:    'Cola a tua API key aqui',
+    priceApiKeySaved:          'API key guardada.',
 
     dangerZone:     'Zona de Perigo',
     dangerZoneDesc: 'Estas ações são permanentes e não podem ser desfeitas.',

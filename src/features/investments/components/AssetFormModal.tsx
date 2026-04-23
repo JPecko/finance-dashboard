@@ -13,6 +13,7 @@ import type { Asset } from '@/domain/types'
 
 interface FormValues {
   name:         string
+  label:        string
   ticker:       string
   currentPrice: string
   priceDate:    string
@@ -31,7 +32,7 @@ export default function AssetFormModal({ open, onClose, asset }: Props) {
   const today = format(new Date(), 'yyyy-MM-dd')
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    defaultValues: { name: '', ticker: '', currentPrice: '0', priceDate: today },
+    defaultValues: { name: '', label: '', ticker: '', currentPrice: '0', priceDate: today },
   })
 
   useEffect(() => {
@@ -39,12 +40,13 @@ export default function AssetFormModal({ open, onClose, asset }: Props) {
     if (asset) {
       reset({
         name:         asset.name,
+        label:        asset.label ?? '',
         ticker:       asset.ticker ?? '',
         currentPrice: fromCents(asset.currentPrice).toFixed(4),
         priceDate:    today,
       })
     } else {
-      reset({ name: '', ticker: '', currentPrice: '0', priceDate: today })
+      reset({ name: '', label: '', ticker: '', currentPrice: '0', priceDate: today })
     }
   }, [open, asset, reset, today])
 
@@ -52,6 +54,7 @@ export default function AssetFormModal({ open, onClose, asset }: Props) {
     const priceCents = toCents(parseFloat(values.currentPrice.replace(',', '.')) || 0)
     const payload = {
       name:         values.name.trim(),
+      label:        values.label.trim() || undefined,
       ticker:       values.ticker.trim().toUpperCase() || undefined,
       currentPrice: priceCents,
     }
@@ -85,6 +88,17 @@ export default function AssetFormModal({ open, onClose, asset }: Props) {
               {...register('name', { required: 'Name is required' })}
             />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="a-label">
+              {t('investments.label')} <span className="text-muted-foreground text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="a-label"
+              placeholder="e.g. S&P 500 ETF, Tech Giant"
+              {...register('label')}
+            />
           </div>
 
           <div className="space-y-1">

@@ -10,6 +10,7 @@ import CashFlowChart from '../components/CashFlowChart'
 import SpendingByCategoryCard from '../components/SpendingByCategoryCard'
 import TopExpensesCard from '../components/TopExpensesCard'
 import { useDashboardModel } from '../hooks/useDashboardModel'
+import { usePriceSync } from '@/shared/hooks/usePriceSync'
 import { useT } from '@/shared/i18n'
 
 const now = new Date()
@@ -17,6 +18,7 @@ const now = new Date()
 export default function DashboardPage() {
   const t     = useT()
   const model = useDashboardModel()
+  usePriceSync()
 
   if (model.isLoading) return <PageLoader message={t('dashboard.loading')} />
 

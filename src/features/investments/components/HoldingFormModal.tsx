@@ -90,7 +90,7 @@ export default function HoldingFormModal({ open, onClose, accountId, holding, as
               >
                 {assets.map(a => (
                   <option key={a.id} value={String(a.id)}>
-                    {a.name}{a.ticker ? ` (${a.ticker.toUpperCase()})` : ''}
+                    {a.label || a.name}{a.ticker ? ` (${a.ticker.toUpperCase()})` : ''}
                   </option>
                 ))}
               </select>

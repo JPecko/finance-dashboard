@@ -36,6 +36,7 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog'
 import AccountFormModal from '../components/AccountFormModal'
 import RevalueModal from '../components/RevalueModal'
 import ShareAccountModal from '../components/ShareAccountModal'
+import { usePriceSync } from '@/shared/hooks/usePriceSync'
 import { computeEffectiveInvestedBase, computeInvestmentBalance } from '@/features/investments/utils/investmentMetrics'
 import type { Account } from '@/domain/types'
 import { useT } from '@/shared/i18n'
@@ -213,6 +214,7 @@ function SortableCard({ account, isManual, children }: SortableCardProps) {
 export default function AccountsPage() {
   const t = useT()
   const navigate = useNavigate()
+  usePriceSync()
   const { setFilterAccountId } = useTransactionsFilterStore()
   const { data: accounts = [], isLoading } = useAccounts()
   const { user } = useAuth()

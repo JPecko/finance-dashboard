@@ -30,7 +30,8 @@ export interface Account {
 
 export interface Asset {
   id?: number
-  name: string           // e.g. "VWCE ETF", "Apple Inc."
+  name: string           // e.g. "Vanguard S&P 500 UCITS ETF USD Acc"
+  label?: string         // short display alias, e.g. "S&P 500 ETF"
   ticker?: string        // e.g. "VWCE", "AAPL"
   currentPrice: number   // cents per unit (manually updated market price)
   createdAt: string

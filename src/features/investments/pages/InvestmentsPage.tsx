@@ -1,12 +1,12 @@
-import { useState, useRef } from 'react'
-import { format } from 'date-fns'
+import { useState } from 'react'
 import { TrendingUp } from 'lucide-react'
 import { useAccounts } from '@/shared/hooks/useAccounts'
 import { useInvestmentCapitalAdjustments } from '@/shared/hooks/useTransactions'
 import { useHoldings, removeHolding } from '@/shared/hooks/useHoldings'
-import { useAssets, removeAsset, updateAsset } from '@/shared/hooks/useAssets'
-import { upsertAssetPrice } from '@/shared/hooks/useAssetPrices'
-import { toCents, fromCents } from '@/domain/money'
+import { useAssets, removeAsset } from '@/shared/hooks/useAssets'
+import { usePriceSync } from '@/shared/hooks/usePriceSync'
+import { syncAssets } from '@/data/services/syncService'
+import { useAssetPriceEditor } from '../hooks/useAssetPriceEditor'
 import { useT } from '@/shared/i18n'
 import GeneralAssetsSection from '../components/GeneralAssetsSection'
 import HoldingFormModal from '../components/HoldingFormModal'
@@ -24,6 +24,12 @@ export default function InvestmentsPage() {
   const { data: holdings = [], isLoading: loadingHoldings } = useHoldings()
   const { data: assets = [],   isLoading: loadingAssets }   = useAssets()
 
+
+  usePriceSync()
+
+  const { editingPrice, priceInputRef, startEditPrice, commitEditPrice, cancelEditPrice, onPriceChange, onDateChange } = useAssetPriceEditor()
+
+  const [syncing, setSyncing] = useState(false)
   const [holdingModalOpen, setHoldingModalOpen] = useState(false)
   const [editHolding,      setEditHolding]      = useState<Holding | undefined>()
   const [modalAccount,     setModalAccount]     = useState<number>(0)
@@ -32,15 +38,22 @@ export default function InvestmentsPage() {
   const [editAsset,        setEditAsset]        = useState<Asset | undefined>()
   const [accountModalOpen, setAccountModalOpen] = useState(false)
   const [editAccount,      setEditAccount]      = useState<Account | undefined>()
-  const [editingPrice,         setEditingPrice]         = useState<{ assetId: number; value: string; date: string } | null>(null)
   const [confirmDeleteHolding, setConfirmDeleteHolding] = useState<Holding | null>(null)
   const [confirmDeleteAsset,   setConfirmDeleteAsset]   = useState<Asset | null>(null)
-  const priceInputRef = useRef<HTMLInputElement>(null)
 
   const investmentAccounts    = accounts.filter(a => a.type === 'investment')
   const assetMap              = Object.fromEntries(assets.map(a => [a.id!, a]))
   const investmentAccountIds  = investmentAccounts.flatMap(a => a.id != null ? [a.id] : [])
   const { data: capitalAdjustments = {} } = useInvestmentCapitalAdjustments(investmentAccountIds)
+
+  const handleSyncPrices = async () => {
+    setSyncing(true)
+    try {
+      await syncAssets(assets)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const openAddHolding  = (accountId: number) => { setEditHolding(undefined); setModalAccount(accountId); setHoldingModalOpen(true) }
   const openEditHolding = (h: Holding)        => { setEditHolding(h); setModalAccount(h.accountId); setHoldingModalOpen(true) }
@@ -58,25 +71,6 @@ export default function InvestmentsPage() {
     if (!confirmDeleteAsset) return
     await removeAsset(confirmDeleteAsset.id!)
     setConfirmDeleteAsset(null)
-  }
-
-  const startEditPrice = (a: Asset) => {
-    setEditingPrice({
-      assetId: a.id!,
-      value: String(fromCents(a.currentPrice)),
-      date: format(new Date(), 'yyyy-MM-dd'),
-    })
-    setTimeout(() => priceInputRef.current?.select(), 0)
-  }
-  const commitEditPrice = async (a: Asset) => {
-    if (!editingPrice || editingPrice.assetId !== a.id) return
-    const parsed = parseFloat(editingPrice.value.replace(',', '.'))
-    if (!isNaN(parsed) && parsed >= 0) {
-      const priceCents = toCents(parsed)
-      await updateAsset(a.id!, { currentPrice: priceCents })
-      if (editingPrice.date) await upsertAssetPrice(a.id!, priceCents, editingPrice.date)
-    }
-    setEditingPrice(null)
   }
 
   if (loadingAccounts || loadingHoldings || loadingAssets) {
@@ -110,10 +104,12 @@ export default function InvestmentsPage() {
         onEditAsset={openEditAsset}
         onDeleteAsset={a => { void handleDeleteAsset(a) }}
         onStartEditPrice={startEditPrice}
-        onPriceChange={v => setEditingPrice(prev => prev ? { ...prev, value: v } : null)}
-        onDateChange={d => setEditingPrice(prev => prev ? { ...prev, date: d } : null)}
+        onPriceChange={onPriceChange}
+        onDateChange={onDateChange}
         onCommitEditPrice={a => { void commitEditPrice(a) }}
-        onCancelEditPrice={() => setEditingPrice(null)}
+        onCancelEditPrice={cancelEditPrice}
+        onSyncPrices={assets.some(a => a.ticker) ? () => { void handleSyncPrices() } : undefined}
+        isSyncing={syncing}
       />
 
       {investmentAccounts.length === 0 ? (

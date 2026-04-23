@@ -42,4 +42,7 @@ export const queryKeys = {
   assetPrices: {
     byAsset: (assetId: number) => ['assetPrices', 'byAsset', assetId] as const,
   },
+  userSettings: {
+    all: () => ['userSettings'] as const,
+  },
 } as const

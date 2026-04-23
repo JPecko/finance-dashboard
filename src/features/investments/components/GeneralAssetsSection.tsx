@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { formatMoney } from '@/domain/money'
 import { useT } from '@/shared/i18n'
@@ -22,6 +22,8 @@ interface Props {
   onDateChange: (date: string) => void
   onCommitEditPrice: (asset: Asset) => void
   onCancelEditPrice: () => void
+  onSyncPrices?: () => void
+  isSyncing?: boolean
 }
 
 function AssetPriceField({
@@ -128,7 +130,10 @@ function AssetRow({
     <div className="grid gap-3 border-b px-4 py-3 last:border-b-0 lg:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-medium">{asset.name}</p>
+          <p className="truncate font-medium">{asset.label || asset.name}</p>
+          {asset.label && (
+            <p className="truncate text-xs text-muted-foreground">{asset.name}</p>
+          )}
           <p className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
             {asset.ticker ?? '—'}
           </p>
@@ -190,6 +195,8 @@ export default function GeneralAssetsSection({
   onDateChange,
   onCommitEditPrice,
   onCancelEditPrice,
+  onSyncPrices,
+  isSyncing,
 }: Props) {
   const t = useT()
 
@@ -197,10 +204,18 @@ export default function GeneralAssetsSection({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">{t('investments.assets')}</h2>
-        <Button variant="outline" size="sm" onClick={onAddAsset}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          {t('investments.addAsset')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onSyncPrices && (
+            <Button variant="outline" size="sm" loading={isSyncing} onClick={onSyncPrices}>
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              {isSyncing ? t('investments.syncing') : t('investments.syncPrices')}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={onAddAsset}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            {t('investments.addAsset')}
+          </Button>
+        </div>
       </div>
 
       {assets.length === 0 ? (
@@ -240,7 +255,12 @@ export default function GeneralAssetsSection({
               <tbody>
                 {assets.map(asset => (
                   <tr key={asset.id} className="border-b last:border-0 hover:bg-accent/20 transition-colors">
-                    <td className="px-5 py-3 font-medium">{asset.name}</td>
+                    <td className="px-5 py-3">
+                      <p className="font-medium">{asset.label || asset.name}</p>
+                      {asset.label && (
+                        <p className="text-xs text-muted-foreground truncate max-w-xs">{asset.name}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-xs uppercase text-muted-foreground">{asset.ticker ?? '—'}</td>
                     <td className="px-4 py-3 text-right">
                       <AssetPriceField
