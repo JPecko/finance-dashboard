@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,7 +25,10 @@ const triggerClasses =
   'flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3.5 text-left text-base shadow-xs transition-[border-color,box-shadow,background-color] outline-none hover:bg-accent/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
 
 const panelClasses =
-  'absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-lg'
+  'fixed z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-lg'
+
+const PANEL_GAP = 8
+const PANEL_MAX_HEIGHT = 288
 
 const optionClasses =
   'flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-accent/70 focus:bg-accent/70 focus:outline-none data-[selected=true]:bg-accent/70 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50'
@@ -37,8 +41,10 @@ export default function PlainSelect({
   className,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number; maxHeight: number }>()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const listId = useId()
 
   const selectedOption = useMemo(
@@ -46,11 +52,35 @@ export default function PlainSelect({
     [options, value],
   )
 
+  // Positioned via a portal + fixed coords (from the trigger's own rect) so the panel can't be
+  // clipped by an ancestor's overflow-y-auto (e.g. a scrolling Dialog) — see feedback_plainselect_portal.
+  const updatePosition = () => {
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const spaceBelow = window.innerHeight - rect.bottom - PANEL_GAP
+    const spaceAbove = rect.top - PANEL_GAP
+    const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow
+    const maxHeight = Math.min(PANEL_MAX_HEIGHT, Math.max(openAbove ? spaceAbove : spaceBelow, 120))
+    setPanelStyle({
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      top: openAbove ? rect.top - PANEL_GAP - maxHeight : rect.bottom + PANEL_GAP,
+    })
+  }
+
+  useLayoutEffect(() => {
+    if (!open) return
+    updatePosition()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
   useEffect(() => {
     if (!open) return
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) {
         setOpen(false)
       }
     }
@@ -64,10 +94,14 @@ export default function PlainSelect({
 
     document.addEventListener('mousedown', handlePointerDown)
     document.addEventListener('keydown', handleEscape)
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
       document.removeEventListener('keydown', handleEscape)
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
     }
   }, [open])
 
@@ -94,9 +128,13 @@ export default function PlainSelect({
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && (
-        <div className={panelClasses}>
-          <div id={listId} role="listbox" className="max-h-72 overflow-y-auto p-1.5">
+      {open && panelStyle && createPortal(
+        <div
+          ref={panelRef}
+          className={panelClasses}
+          style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
+        >
+          <div id={listId} role="listbox" className="overflow-y-auto p-1.5" style={{ maxHeight: panelStyle.maxHeight }}>
             {options.map((option, i) => {
               const isSelected = option.value === value
 
@@ -124,7 +162,8 @@ export default function PlainSelect({
               )
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
