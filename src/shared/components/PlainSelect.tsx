@@ -46,6 +46,7 @@ export default function PlainSelect({
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const listId = useId()
+  const [portalTarget, setPortalTarget] = useState<Element>(document.body)
 
   const selectedOption = useMemo(
     () => options.find(option => option.value === value),
@@ -54,18 +55,26 @@ export default function PlainSelect({
 
   // Positioned via a portal + fixed coords (from the trigger's own rect) so the panel can't be
   // clipped by an ancestor's overflow-y-auto (e.g. a scrolling Dialog) — see feedback_plainselect_portal.
+  // Radix Dialog sets pointer-events:none on the rest of <body> while open, so a plain
+  // document.body portal is visible but unclickable — portal into the dialog content instead,
+  // and position relative to it (its own transform makes `fixed` act like `absolute` there).
   const updatePosition = () => {
     const rect = triggerRef.current?.getBoundingClientRect()
     if (!rect) return
+    const dialogContent = triggerRef.current?.closest('[data-slot="dialog-content"]')
+    setPortalTarget(dialogContent ?? document.body)
+    const containerRect = dialogContent?.getBoundingClientRect()
+    const offsetLeft = containerRect?.left ?? 0
+    const offsetTop = containerRect?.top ?? 0
     const spaceBelow = window.innerHeight - rect.bottom - PANEL_GAP
     const spaceAbove = rect.top - PANEL_GAP
     const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow
     const maxHeight = Math.min(PANEL_MAX_HEIGHT, Math.max(openAbove ? spaceAbove : spaceBelow, 120))
     setPanelStyle({
-      left: rect.left,
+      left: rect.left - offsetLeft,
       width: rect.width,
       maxHeight,
-      top: openAbove ? rect.top - PANEL_GAP - maxHeight : rect.bottom + PANEL_GAP,
+      top: (openAbove ? rect.top - PANEL_GAP - maxHeight : rect.bottom + PANEL_GAP) - offsetTop,
     })
   }
 
@@ -131,7 +140,7 @@ export default function PlainSelect({
       {open && panelStyle && createPortal(
         <div
           ref={panelRef}
-          className={panelClasses}
+          className={cn(panelClasses, portalTarget !== document.body && 'absolute')}
           style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
         >
           <div id={listId} role="listbox" className="overflow-y-auto p-1.5" style={{ maxHeight: panelStyle.maxHeight }}>
@@ -163,7 +172,7 @@ export default function PlainSelect({
             })}
           </div>
         </div>,
-        document.body,
+        portalTarget,
       )}
     </div>
   )

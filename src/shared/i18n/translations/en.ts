@@ -3,7 +3,7 @@ export const en = {
     housing:       'Housing',
     food:          'Food & Drinks',
     groceries:     'Groceries',
-    transport:     'Transport',
+    transport:     'Transport / Car',
     health:        'Health',
     entertainment: 'Entertainment',
     shopping:      'Shopping',

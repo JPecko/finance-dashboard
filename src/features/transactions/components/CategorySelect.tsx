@@ -14,6 +14,8 @@ export default function CategorySelect({ categories, value, onChange }: Props) {
   const options = categories.map(category => ({
     value: category.id,
     label: tCategory(category.id, t),
+    content: <CategoryOption category={category} label={tCategory(category.id, t)} />,
+    selectedContent: <CategoryOption category={category} label={tCategory(category.id, t)} compact />,
   }))
 
   return (
@@ -23,3 +25,20 @@ export default function CategorySelect({ categories, value, onChange }: Props) {
     </div>
   )
 }
+
+function CategoryOption({ category, label, compact }: { category: Category; label: string; compact?: boolean }) {
+  const Icon = category.icon
+  const size = compact ? 'h-6 w-6' : 'h-8 w-8'
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div
+        className={`${size} rounded-lg flex items-center justify-center shrink-0`}
+        style={{ backgroundColor: `${category.color}20` }}
+      >
+        <Icon className="h-4 w-4" style={{ color: category.color }} />
+      </div>
+      <span className="truncate">{label}</span>
+    </div>
+  )
+}
+

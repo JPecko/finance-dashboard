@@ -5,7 +5,7 @@ export const pt: typeof en = {
     housing:       'Habitação',
     food:          'Restauração & Bar',
     groceries:     'Supermercado',
-    transport:     'Transporte',
+    transport:     'Transporte / Automóvel',
     health:        'Saúde',
     entertainment: 'Entretenimento',
     shopping:      'Shopping',
