@@ -90,7 +90,7 @@ function GroupBalanceSummary({ group }: { group: Group }) {
 
 // ---- Widget ----------------------------------------------------
 
-export default function GroupsWidget() {
+export default function GroupsWidget({ className }: { className?: string }) {
   const t        = useT()
   const navigate = useNavigate()
   const { data: groups = [], isLoading } = useGroups()
@@ -98,7 +98,7 @@ export default function GroupsWidget() {
   if (isLoading || groups.length === 0) return null
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{t('groups.widgetTitle')}</CardTitle>
         <Button

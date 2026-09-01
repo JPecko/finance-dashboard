@@ -1,6 +1,7 @@
 import { Banknote, PiggyBank, BarChart2, HandCoins, CreditCard, UtensilsCrossed } from 'lucide-react'
 import { formatMoney } from '@/domain/money'
 import type { AccountType } from '@/domain/types'
+import type { AccountGroup } from '@/domain/accountGrouping'
 import type { LucideIcon } from 'lucide-react'
 
 export const ACCOUNT_TYPE_META: Record<AccountType, { icon: LucideIcon; color: string }> = {
@@ -10,6 +11,13 @@ export const ACCOUNT_TYPE_META: Record<AccountType, { icon: LucideIcon; color: s
   cash:       { icon: HandCoins,         color: '#f59e0b' },
   credit:     { icon: CreditCard,        color: '#ef4444' },
   meal:       { icon: UtensilsCrossed,   color: '#f97316' },
+}
+
+// Representative color per account group — mirrors the checking/savings/investment palette above.
+export const ACCOUNT_GROUP_COLOR: Record<AccountGroup, string> = {
+  current:    ACCOUNT_TYPE_META.checking.color,
+  savings:    ACCOUNT_TYPE_META.savings.color,
+  investment: ACCOUNT_TYPE_META.investment.color,
 }
 
 export function formatTooltipValue(value: unknown): string {

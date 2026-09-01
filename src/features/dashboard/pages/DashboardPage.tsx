@@ -49,8 +49,8 @@ export default function DashboardPage() {
 
       {exportOpen && <ExportReportModal open={exportOpen} onClose={() => setExportOpen(false)} />}
 
-      {/* Row 1: Net Worth | Month Summary | Account Balances (+ Perks on mobile) */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Row 1: Net Worth | Month Summary | Groups (lg) — Account Balances (+ Perks on mobile) below */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <NetWorthCard
           netWorthTotal={model.netWorthTotal}
           netWorthByType={model.netWorthByType}
@@ -63,13 +63,13 @@ export default function DashboardPage() {
         <AccountBalancesCard
           accounts={model.accounts}
           effectiveBalances={model.effectiveBalances}
+          className="sm:col-span-2 lg:col-span-3 lg:order-4"
         />
         {model.hasBenefits && (
           <PerksCard {...perksProps} className="lg:hidden sm:col-span-2 xl:col-span-1" />
         )}
+        <GroupsWidget className="sm:col-span-2 lg:col-span-1 lg:order-3" />
       </div>
-
-      <GroupsWidget />
 
       {/* Row 2: Cash flow chart | Spending by category */}
       <div className="grid gap-4 lg:grid-cols-2">
