@@ -21,6 +21,7 @@ interface Props {
 export default function HoldingImportModal({ open, onClose, accountId, broker, assets, holdings }: Props) {
   const brokerKey  = (broker && broker in BROKER_TEMPLATES) ? broker as BrokerKey : null
   const brokerLabel = brokerKey ? BROKER_TEMPLATES[brokerKey].label : null
+  const exportSteps = brokerKey ? BROKER_TEMPLATES[brokerKey].exportSteps : null
   const fileRef    = useRef<HTMLInputElement>(null)
 
   const { step, previewItems, createCount, updateCount, removeCount, errorItems, importing, error, handleFile, handleConfirm, reset } = useHoldingImport(accountId, brokerKey, assets, holdings)
@@ -44,6 +45,7 @@ export default function HoldingImportModal({ open, onClose, accountId, broker, a
           {step === 'upload' && (
             <UploadStep
               brokerLabel={brokerLabel}
+              exportSteps={exportSteps}
               error={error}
               fileRef={fileRef}
             />
@@ -99,18 +101,24 @@ export default function HoldingImportModal({ open, onClose, accountId, broker, a
   )
 }
 
-function UploadStep({ brokerLabel, error, fileRef }: {
+function UploadStep({ brokerLabel, exportSteps, error, fileRef }: {
   brokerLabel: string | null
+  exportSteps: string[] | null
   error: string | null
   fileRef: React.RefObject<HTMLInputElement | null>
 }) {
   return (
     <div className="space-y-4">
       {brokerLabel ? (
-        <p className="text-sm text-muted-foreground">
-          Detected broker: <span className="font-medium text-foreground">{brokerLabel}</span>.
-          Export your transaction history as CSV or XLSX from {brokerLabel} and upload it here.
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Detected broker: <span className="font-medium text-foreground">{brokerLabel}</span>.
+            Export your transaction history as CSV or XLSX and upload it here.
+          </p>
+          {exportSteps && exportSteps.length > 0 && (
+            <BrokerExportSteps steps={exportSteps} />
+          )}
+        </div>
       ) : (
         <p className="text-sm text-destructive">
           This account has no broker configured. Edit the account and set a broker first.
@@ -135,6 +143,14 @@ function UploadStep({ brokerLabel, error, fileRef }: {
         </p>
       )}
     </div>
+  )
+}
+
+function BrokerExportSteps({ steps }: { steps: string[] }) {
+  return (
+    <ol className="text-xs text-muted-foreground bg-muted/50 rounded-md p-3 space-y-1 list-decimal list-inside">
+      {steps.map((step, i) => <li key={i}>{step}</li>)}
+    </ol>
   )
 }
 

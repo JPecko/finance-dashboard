@@ -73,7 +73,14 @@ export function parseCsvToRows(raw: string, template: BrokerTemplate): ImportRow
   }
 
   const headers = splitCsvLine(lines[headerIdx], separator).map(h => h.replace(/^"|"$/g, ''))
-  const colIdx = (name: string) => headers.indexOf(name)
+  // `col` may be a single header name or a list of accepted aliases (e.g. localized exports)
+  const colIdx = (col: string | string[]) => {
+    for (const name of Array.isArray(col) ? col : [col]) {
+      const idx = headers.indexOf(name)
+      if (idx !== -1) return idx
+    }
+    return -1
+  }
 
   const rows: ImportRow[] = []
 
@@ -81,7 +88,10 @@ export function parseCsvToRows(raw: string, template: BrokerTemplate): ImportRow
     const cells = splitCsvLine(lines[i], separator).map(c => c.replace(/^"|"$/g, ''))
     if (cells.every(c => c === '')) continue
 
-    const get = (col: string) => (col ? (cells[colIdx(col)] ?? '') : '')
+    const get = (col: string | string[]) => {
+      const idx = colIdx(col)
+      return idx === -1 ? '' : (cells[idx] ?? '')
+    }
 
     // --- Type filtering ---
     if (columns.typeCol) {
