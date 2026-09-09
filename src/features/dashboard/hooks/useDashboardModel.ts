@@ -103,7 +103,13 @@ export function useDashboardModel(year: number = DASHBOARD_YEAR, month: number =
     transactions.filter(tx => tx.category === 'roundup').reduce((s, tx) => s + Math.abs(tx.amount), 0),
   [transactions])
 
-  const hasBenefits = useMemo(() => accounts.some(a => a.cashbackPct || a.roundupMultiplier), [accounts])
+  const interestMonth = useMemo(() =>
+    transactions.filter(tx => tx.category === 'interest').reduce((s, tx) => s + Math.abs(tx.amount), 0),
+  [transactions])
+
+  const hasBenefits = useMemo(() =>
+    accounts.some(a => a.cashbackPct || a.roundupMultiplier) || interestMonth > 0 || (yearBenefits?.interest ?? 0) > 0,
+  [accounts, interestMonth, yearBenefits])
 
   const savingsRate = useMemo(() =>
     summary.personalIncome > 0
@@ -202,6 +208,7 @@ export function useDashboardModel(year: number = DASHBOARD_YEAR, month: number =
     yearBenefits,
     cashbackMonth,
     roundupMonth,
+    interestMonth,
     hasBenefits,
     categoryData,
     categoryTotal,

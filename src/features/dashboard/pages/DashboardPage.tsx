@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const perksProps = {
     cashbackMonth: model.cashbackMonth,
     roundupMonth:  model.roundupMonth,
+    interestMonth: model.interestMonth,
     yearBenefits:  model.yearBenefits,
     benefitsData:  model.benefitsData,
   }

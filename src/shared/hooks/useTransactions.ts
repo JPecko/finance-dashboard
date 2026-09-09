@@ -292,8 +292,22 @@ export function useMonthlyBenefits(year: number, month: number) {
     },
   })
 
+  // Interest transactions in window
+  const { data: interestRows = [] } = useQuery({
+    queryKey: ['benefits', 'interest-raw', year, month],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('amount, date')
+        .eq('category', 'interest')
+        .gte('date', windowStart)
+        .lt('date', windowEnd)
+      return (data ?? []) as { amount: number; date: string }[]
+    },
+  })
+
   const data = useMemo(() => {
-    const result: { month: string; cashback: number; roundup: number }[] = []
+    const result: { month: string; cashback: number; roundup: number; interest: number }[] = []
     for (let i = 5; i >= 0; i--) {
       const d    = new Date(year, month - 1 - i, 1)
       const y    = getYear(d)
@@ -307,6 +321,10 @@ export function useMonthlyBenefits(year: number, month: number) {
         .filter(r => r.date >= from && r.date < to)
         .reduce((s, r) => s + Math.abs(r.amount), 0)
 
+      const interest = interestRows
+        .filter(r => r.date >= from && r.date < to)
+        .reduce((s, r) => s + Math.abs(r.amount), 0)
+
       const cashback = expenseRows
         .filter(e => e.date >= from && e.date < to)
         .reduce((s, e) => {
@@ -315,10 +333,10 @@ export function useMonthlyBenefits(year: number, month: number) {
           return s + Math.floor(Math.abs(e.amount) * acc.cashbackPct / 100)
         }, 0)
 
-      result.push({ month: format(d, 'MMM yy'), cashback, roundup })
+      result.push({ month: format(d, 'MMM yy'), cashback, roundup, interest })
     }
     return result
-  }, [year, month, expenseRows, roundupRows, accounts])
+  }, [year, month, expenseRows, roundupRows, interestRows, accounts])
 
   return { data }
 }
@@ -359,14 +377,28 @@ export function useYearBenefits(year: number) {
     },
   })
 
+  const { data: interestRows = [] } = useQuery({
+    queryKey: ['benefits', 'year-interest', year],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('category', 'interest')
+        .gte('date', `${year}-01-01`)
+        .lt('date', `${year + 1}-01-01`)
+      return (data ?? []) as { amount: number }[]
+    },
+  })
+
   const data = useMemo(() => ({
     cashback: expenseRows.reduce((s, e) => {
       const acc = accounts.find(a => a.id === e.account_id)
       if (!acc?.cashbackPct) return s
       return s + Math.floor(Math.abs(e.amount) * acc.cashbackPct / 100)
     }, 0),
-    roundup: roundupRows.reduce((s, r) => s + Math.abs(r.amount), 0),
-  }), [expenseRows, roundupRows, accounts])
+    roundup:  roundupRows.reduce((s, r) => s + Math.abs(r.amount), 0),
+    interest: interestRows.reduce((s, r) => s + Math.abs(r.amount), 0),
+  }), [expenseRows, roundupRows, interestRows, accounts])
 
   return { data }
 }

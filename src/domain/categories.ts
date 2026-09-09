@@ -21,6 +21,7 @@ import {
   Dumbbell,
   Sparkles,
   Undo2,
+  PiggyBank,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -52,6 +53,7 @@ export const CATEGORIES: Category[] = [
   { id: 'freelance',     label: 'Freelance',        icon: Briefcase,      color: '#8b5cf6', type: 'income' },
   { id: 'investment',    label: 'Investment Return', icon: TrendingUp,    color: '#84cc16', type: 'income' },
   { id: 'reimbursement', label: 'Reimbursement',    icon: Undo2,          color: '#2dd4bf', type: 'income' },
+  { id: 'interest',      label: 'Interest',         icon: PiggyBank,      color: '#38bdf8', type: 'income' },
   { id: 'invest-move',   label: 'Investment Move',  icon: ArrowUpRight,   color: '#8b5cf6', type: 'both' },
   { id: 'capital',       label: 'Capital Movement', icon: BarChart2,      color: '#0ea5e9', type: 'both' },
   { id: 'transfer',      label: 'Transfer',         icon: ArrowLeftRight, color: '#94a3b8', type: 'both' },
