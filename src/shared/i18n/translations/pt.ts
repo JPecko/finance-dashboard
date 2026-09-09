@@ -351,6 +351,8 @@ export const pt: typeof en = {
     salary:             'Salário',
     mealCard:           'Cartão Refeição',
     otherIncome:        'Outras Receitas',
+    avgIncome:          'Média receitas',
+    avgOutcome:         'Média despesas',
     expenses:           'Despesas',
     balance:            'Saldo',
     myIncome:           'As minhas Receitas',

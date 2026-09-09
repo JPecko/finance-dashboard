@@ -1,0 +1,9 @@
+// Recharts positions the legend wrapper with an inline `bottom` style computed from the
+// chart margin, so padding/margin on the wrapper itself has no effect — override `bottom`
+// directly (needs !important to beat the inline style) to push the legend away from the
+// x-axis labels above it, more so on mobile where they sit closer together.
+@media (max-width: 639px) {
+  .chartWrap :global(.recharts-legend-wrapper) {
+    bottom: 0 !important;
+  }
+}

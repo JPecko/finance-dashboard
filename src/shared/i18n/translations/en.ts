@@ -176,6 +176,8 @@ export const en = {
     salary:             'Salary',
     mealCard:           'Meal Card',
     otherIncome:        'Other Income',
+    avgIncome:          'Avg. income',
+    avgOutcome:         'Avg. outcome',
     expenses:           'Expenses',
     balance:            'Balance',
     myIncome:           'My Income',
