@@ -103,14 +103,26 @@ export function useMonthlyNetFlow(year: number, month: number) {
     queryFn:  async () => {
       const divisorFor = (t: Transaction) => personalDivisorFor(t, userId, accounts)
 
-      const result: { month: string; income: number; expenses: number; investing: number; roundup: number; net: number }[] = []
+      const result: {
+        month: string; income: number; salary: number; mealCard: number; otherIncome: number
+        expenses: number; investing: number; roundup: number; net: number
+      }[] = []
       for (let i = 5; i >= 0; i--) {
         const d    = new Date(year, month - 1 - i, 1)
         const all  = await transactionsRepo.getByMonth(getYear(d), getMonth(d) + 1)
         const groupExp = await groupsRepo.getMyGroupExpensesForMonth(getYear(d), getMonth(d) + 1)
         const INVESTING_CATS = new Set(['investing', 'invest-move', 'capital'])
         const cash = all.filter(isCashFlow)
-        const income    = cash.filter(t => t.amount > 0).reduce((s, t) => s + t.amount / divisorFor(t), 0)
+        const incomeTxs = cash.filter(t => t.amount > 0)
+        const income    = incomeTxs.reduce((s, t) => s + t.amount / divisorFor(t), 0)
+        // Split income by source: meal card accounts first, then salary category, else other
+        const mealCard = incomeTxs
+          .filter(t => accounts.find(a => a.id === t.accountId)?.type === 'meal')
+          .reduce((s, t) => s + t.amount / divisorFor(t), 0)
+        const salary = incomeTxs
+          .filter(t => t.category === 'salary' && accounts.find(a => a.id === t.accountId)?.type !== 'meal')
+          .reduce((s, t) => s + t.amount / divisorFor(t), 0)
+        const otherIncome = income - mealCard - salary
         const investMoves = all.filter(t => t.type === 'transfer' && t.category === 'invest-move' && t.amount < 0)
         const groupInvestingAmt = groupExp.filter(g => INVESTING_CATS.has(g.category)).reduce((s, g) => s + g.myShare, 0)
         const investing = [
@@ -129,7 +141,10 @@ export function useMonthlyNetFlow(year: number, month: number) {
             return s + Math.abs(t.amount) / divisor
           }, 0)
         const expenses  = cash.filter(t => t.amount < 0 && t.category !== 'investing' && t.category !== 'roundup' && t.category !== 'invest-move').reduce((s, t) => s + Math.abs(t.amount) / divisorFor(t), 0) + settlementOutflows
-        result.push({ month: format(d, 'MMM yy'), income, expenses, investing, roundup, net: income - expenses - investing - roundup })
+        result.push({
+          month: format(d, 'MMM yy'), income, salary, mealCard, otherIncome,
+          expenses, investing, roundup, net: income - expenses - investing - roundup,
+        })
       }
       return result
     },

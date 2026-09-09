@@ -9,7 +9,10 @@ import { formatTooltipValue } from '../utils/dashboardHelpers'
 import { chartTooltipStyle, chartTooltipLabelStyle } from '@/shared/utils/chartStyle'
 
 interface Props {
-  barData: { month: string; income: number; expenses: number; investing: number; roundup: number }[]
+  barData: {
+    month: string; income: number; salary: number; mealCard: number; otherIncome: number
+    expenses: number; investing: number; roundup: number
+  }[]
 }
 
 export default function CashFlowChart({ barData }: Props) {
@@ -32,7 +35,9 @@ export default function CashFlowChart({ barData }: Props) {
               labelStyle={chartTooltipLabelStyle}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="income"    name={t('dashboard.income')}    fill="#22c55e" radius={[3, 3, 0, 0]} maxBarSize={28} />
+            <Bar dataKey="salary"      name={t('dashboard.salary')}    fill="#22c55e" stackId="income"  maxBarSize={28} />
+            <Bar dataKey="mealCard"    name={t('dashboard.mealCard')}  fill="#84cc16" stackId="income"  maxBarSize={28} />
+            <Bar dataKey="otherIncome" name={t('dashboard.otherIncome')} fill="#a3e635" stackId="income" radius={[3, 3, 0, 0]} maxBarSize={28} />
             <Bar dataKey="expenses"  name={t('dashboard.expenses')}  fill="#f43f5e" stackId="outcome"    maxBarSize={28} />
             <Bar dataKey="investing" name={t('dashboard.investing')} fill="#8b5cf6" stackId="outcome"    maxBarSize={28} />
             <Bar dataKey="roundup"   name={t('dashboard.roundup')}   fill="#78716c" stackId="outcome" radius={[3, 3, 0, 0]} maxBarSize={28} />
