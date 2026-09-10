@@ -10,6 +10,7 @@ import AmountInput from '@/shared/components/AmountInput'
 import DateInput from '@/shared/components/DateInput'
 import FormToggle from '@/shared/components/FormToggle'
 import RecurringDateRuleSection from './RecurringDateRuleSection'
+import { freqOptions } from '../utils/frequencyOptions'
 import { buildGroupedAccountSelectOptions } from '@/features/transactions/components/accountSelectOptions'
 import { toCents, fromCents } from '@/domain/money'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORIES, tCategory } from '@/domain/categories'
@@ -18,14 +19,6 @@ import { useSortedAccounts } from '@/shared/hooks/useAccounts'
 import { addRule, updateRule } from '@/shared/hooks/useRecurringRules'
 import type { RecurringRule, TransactionType, RecurringFrequency } from '@/domain/types'
 import { useT } from '@/shared/i18n'
-
-function freqOptions(t: ReturnType<typeof useT>) {
-  return [
-    { value: 'weekly',  label: t('recurring.frequencies.weekly') },
-    { value: 'monthly', label: t('recurring.frequencies.monthly') },
-    { value: 'yearly',  label: t('recurring.frequencies.yearly') },
-  ]
-}
 
 interface FormValues {
   accountId:           string
@@ -128,7 +121,7 @@ export default function RecurringStandardTab({ open, onClose, rule, defaultType 
 
   const handleFrequencyChange = (v: RecurringFrequency) => {
     setValue('frequency', v)
-    if (v === 'weekly') setValue('dateRule', 'exact')
+    if (v === 'weekly' || v === 'once') setValue('dateRule', 'exact')
   }
 
   const onSubmit = async (values: FormValues) => {

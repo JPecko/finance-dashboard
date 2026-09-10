@@ -90,7 +90,7 @@ export interface Transaction {
   createdAt: string
 }
 
-export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly'
+export type RecurringFrequency = 'once' | 'weekly' | 'monthly' | 'yearly'
 
 export interface RecurringRule {
   id?: number

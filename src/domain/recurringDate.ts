@@ -24,6 +24,7 @@ export function applyDateRule(raw: Date, mode: DateRuleMode, adjustToBusinessDay
 
 function stepAnchor(anchor: Date, frequency: RecurringFrequency): Date {
   switch (frequency) {
+    case 'once':    return anchor // never advanced — the rule retires after its single firing
     case 'weekly':  return addWeeks(anchor, 1)
     case 'monthly': return addMonths(anchor, 1)
     case 'yearly':  return addYears(anchor, 1)

@@ -15,8 +15,8 @@ export default function RecurringDateRuleSection({
   frequency, dateRule, onDateRuleChange, adjustToBusinessDay, onAdjustChange,
 }: Props) {
   const t = useT()
-  // "First business day of month" only makes sense when the rule has a month to anchor to
-  const showFirstBusinessDay = frequency !== 'weekly'
+  // "First business day of month" only makes sense for period-based monthly/yearly rules
+  const showFirstBusinessDay = frequency === 'monthly' || frequency === 'yearly'
 
   return (
     <div className="space-y-2">

@@ -510,6 +510,7 @@ export const pt: typeof en = {
     noRulesDesc:   'Adiciona as tuas despesas fixas mensais como renda, subscrições, ou rendimentos regulares como o salário.',
     addFirst:      'Adicionar a primeira regra',
     nextDue:       'Próximo vencimento',
+    scheduledFor:  'Agendado para',
     total:         'Total',
     monthTotal:    'Total',
     byAccount:     'Balanço por Conta',
@@ -547,6 +548,7 @@ export const pt: typeof en = {
     amountMustBePositive: 'Tem de ser > 0',
     saveChanges:         'Guardar Alterações',
     frequencies: {
+      once:    'Uma vez',
       weekly:  'Semanal',
       monthly: 'Mensal',
       yearly:  'Anual',

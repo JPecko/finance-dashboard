@@ -335,6 +335,7 @@ export const en = {
     noRulesDesc: 'Add your fixed monthly expenses like rent, subscriptions, or regular income like your salary.',
     addFirst:      'Add first rule',
     nextDue:       'Next due',
+    scheduledFor:  'Scheduled for',
     total:         'Total',
     monthTotal:    'Total',
     byAccount:     'Balance by Account',
@@ -372,6 +373,7 @@ export const en = {
     amountMustBePositive: 'Must be > 0',
     saveChanges:         'Save Changes',
     frequencies: {
+      once:    'Once',
       weekly:  'Weekly',
       monthly: 'Monthly',
       yearly:  'Yearly',

@@ -9,6 +9,7 @@ import PlainSelect from '@/shared/components/PlainSelect'
 import DateInput from '@/shared/components/DateInput'
 import RecurringGroupSection from './RecurringGroupSection'
 import RecurringDateRuleSection from './RecurringDateRuleSection'
+import { freqOptions } from '../utils/frequencyOptions'
 import { useRecurringGroupSplit } from '../hooks/useRecurringGroupSplit'
 import { toCents, fromCents } from '@/domain/money'
 import { GROUP_EXPENSE_CATS } from '@/features/transactions/components/useGroupTransactionForm'
@@ -20,14 +21,6 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { addRule, updateRule } from '@/shared/hooks/useRecurringRules'
 import type { RecurringRule, RecurringFrequency } from '@/domain/types'
 import { useT } from '@/shared/i18n'
-
-function freqOptions(t: ReturnType<typeof useT>) {
-  return [
-    { value: 'weekly',  label: t('recurring.frequencies.weekly') },
-    { value: 'monthly', label: t('recurring.frequencies.monthly') },
-    { value: 'yearly',  label: t('recurring.frequencies.yearly') },
-  ]
-}
 
 interface FormValues {
   name:                string
@@ -138,7 +131,7 @@ export default function RecurringGroupTab({ open, onClose, rule }: Props) {
 
   const handleFrequencyChange = (v: RecurringFrequency) => {
     setValue('frequency', v)
-    if (v === 'weekly') setValue('dateRule', 'exact')
+    if (v === 'weekly' || v === 'once') setValue('dateRule', 'exact')
   }
 
   const onSubmit = async (values: FormValues) => {

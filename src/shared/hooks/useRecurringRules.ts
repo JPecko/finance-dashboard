@@ -96,6 +96,16 @@ async function applyGroupRule(rule: RecurringRule, applyDate: string): Promise<v
 
 // ─── Apply ───────────────────────────────────────────────────────────────────
 
+// A 'once' rule fires a single time then retires — it must never advance its anchor.
+// Returns the next anchor/nextDue pair, or null when the rule was retired.
+async function retireOrAdvance(rule: RecurringRule, currentAnchor: string) {
+  if (rule.frequency === 'once') {
+    await recurringRepo.update(rule.id!, { active: false })
+    return null
+  }
+  return recurringRepo.advance(rule.id!, rule, currentAnchor)
+}
+
 /** Creates a transaction (or group entry, for group rules) from a rule for the given date
  *  (defaults to rule.nextDue) and advances the rule's nextDue to the next occurrence. */
 export async function applyRule(rule: RecurringRule, date?: string): Promise<void> {
@@ -119,7 +129,7 @@ export async function applyRule(rule: RecurringRule, date?: string): Promise<voi
     })
   }
 
-  await recurringRepo.advance(rule.id!, rule, rule.anchorDate ?? rule.nextDue)
+  await retireOrAdvance(rule, rule.anchorDate ?? rule.nextDue)
   queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all() })
   queryClient.invalidateQueries({ queryKey: queryKeys.rules.all() })
@@ -154,9 +164,10 @@ export async function autoApplyDueRules(): Promise<void> {
           splitN:          rule.splitN ?? null,
         })
       }
-      const { anchorDate, nextDue } = await recurringRepo.advance(rule.id!, rule, currentAnchor)
-      currentAnchor = anchorDate
-      currentDue = nextDue
+      const next = await retireOrAdvance(rule, currentAnchor)
+      if (!next) break // 'once' rule — retired after its single firing
+      currentAnchor = next.anchorDate
+      currentDue = next.nextDue
     }
   }
 

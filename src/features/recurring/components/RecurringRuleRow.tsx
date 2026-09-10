@@ -12,6 +12,7 @@ import { useT } from '@/shared/i18n'
 import type { RecurringRule } from '@/domain/types'
 
 const FREQ_BADGE: Record<string, string> = {
+  once:    'bg-slate-500/10 text-slate-600 dark:text-slate-400',
   weekly:  'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   monthly: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   yearly:  'bg-amber-500/10 text-amber-600 dark:text-amber-400',
@@ -91,7 +92,9 @@ export default function RecurringRuleRow({ rule, accountName, applying, onApply,
       </div>
 
       <div className="hidden sm:flex flex-col items-end shrink-0">
-        <span className="text-xs text-muted-foreground">{t('recurring.nextDue')}</span>
+        <span className="text-xs text-muted-foreground">
+          {rule.frequency === 'once' ? t('recurring.scheduledFor') : t('recurring.nextDue')}
+        </span>
         <span className="text-sm font-medium tabular-nums">{formatDate(rule.nextDue)}</span>
       </div>
 
